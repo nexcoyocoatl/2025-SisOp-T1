@@ -196,6 +196,7 @@ void read_code( char *instruction )
         if (temp[0] == '#')
         {
             temp++;
+            b_immediate = 1;
             value = atoi(temp);
         }
         else
@@ -204,15 +205,17 @@ void read_code( char *instruction )
         }
     }
 
-    // !!!!!!!!!!!!!!!!!!!!!! essa parte tá toda cagada (temos que refatorar a forma que isso tá sendo avaliado)
+    // !!!!!!!!!!!!!!!!!!!!!! (temos que refatorar a forma que isso tá sendo avaliado, ficou um tanto confuso)
     if ((opcode = str2enum(operation_string)) != OP_ERROR)
     {
         struct Variable temp_variable;
         struct Instruction temp_instruction;
 
+        // Registrador imediato fica na memória com o "nome" de seu valor
         if (b_immediate)
         {
             struct Variable temp_variable;
+            sprintf(temp_variable.name, "%d", value);
             temp_variable.value = value;
             registers[register_count] = temp_variable;
 
@@ -228,6 +231,9 @@ void read_code( char *instruction )
             struct Instruction temp_instruction;
             temp_instruction.operation = opcode;
             temp_instruction.register_index = atoi(temp);
+
+            instructions[instruction_count] = temp_instruction;
+            instruction_count++;
         }
 
         else
@@ -253,7 +259,6 @@ void read_code( char *instruction )
             
             instructions[instruction_count] = temp_instruction;
             instruction_count++;
-            register_count++;
         }
     }
     else
@@ -285,7 +290,6 @@ void read_data( char *instruction)
         while(isspace((unsigned char)*temp)) temp++;
         value = atoi(temp);
     }
-    printf("\n");
 
     struct Variable temp_variable;
     strcpy(temp_variable.name, variable_name);
@@ -405,14 +409,15 @@ int main( int argc, char **argv )
     fclose(fileptr);
 
     // Test: Prints all registers and instructions on virtual memory
+    printf("Data:\n");
     for (size_t i = 0; i < register_count; i++)
     {
-        printf("%lu: %s = %d\n", i, registers[i].name, registers[i].value);
+        printf(" %lu: %s = %d\n", i, registers[i].name, registers[i].value);
     }
-
+    printf("Instructions:\n");
     for (size_t i = 0; i < instruction_count; i++)
     {
-        printf("%lu: OPCODE %d: %s = %d\n", i, instructions[i].operation, registers[instructions[i].register_index].name, registers[instructions[i].register_index].value);
+        printf(" %lu: OPCODE %d: %s = %d\n", i, instructions[i].operation, registers[instructions[i].register_index].name, registers[instructions[i].register_index].value);
     }
 
     return 0;
