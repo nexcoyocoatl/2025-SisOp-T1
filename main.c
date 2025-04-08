@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Basic registers used for this abstraction of assembly code
+// Basic variables used for this abstraction of assembly code
 int acc;
 int pc;
 
@@ -25,14 +25,24 @@ enum Operation
     SYSCALL,
 };
 
-// (WIP) Instructions have an op code an an index for a register (e.g. acc)
+enum Type
+{
+    IMMEDIATE = 0,
+    VAR_POINTER
+};
+
+// (WIP) Instructions have an op code an an index for a variable (e.g. acc)
 struct Instruction
 {
     enum Operation operation;
-    short register_index;
+    int type;
+    union {
+        struct Variable *var_pointer;
+        int immediate;
+    };
 };
 
-// Will contain registers and unnamed values to be used in memory as immediates (probably refactor later? maybe rename?)
+// Will contain variables and unnamed values to be used in memory as immediates (probably refactor later? maybe rename?)
 struct Variable
 {
     char name[256];
@@ -40,12 +50,12 @@ struct Variable
 };
 
 // Counters
-size_t register_count; // Counter for number of registers/values
+size_t variable_count; // Counter for number of variables in data
 size_t instruction_count; // "Virtual" memory for instructions (maybe refactor?)
 
 // "Virtual" Memory
 struct Instruction instructions[512]; //
-struct Variable registers[32];
+struct Variable variables[32];
 
 // Struct that will create dictionary-like lists of string-value pairs
 struct Conversion {
@@ -161,13 +171,18 @@ void syscall( int index )
     }
 }
 
+//
+// AINDA NÃO FUNCIONA PRO PROG2.TXT
+// PRECISA FAZER UM CASO PROS LABELS E BRANCHES
+//
+
 // Reads one line of code instructions
 void read_code( char *instruction )
 {
     char delim[] = "\n\r ";
     char *temp;
     char operation_string[128];
-    char register_variable[128];
+    char variable[128];
     int opcode;
     int value = 0;
 
@@ -192,7 +207,7 @@ void read_code( char *instruction )
             temp[i] = toupper(temp[i]);
         }
 
-        // Checks if the second part is another register or an immediate value
+        // Checks if the second part is another variable or an immediate value
         if (temp[0] == '#')
         {
             temp++;
@@ -201,61 +216,46 @@ void read_code( char *instruction )
         }
         else
         {
-            strcpy(register_variable, temp);
+            strcpy(variable, temp);
         }
     }
 
-    // !!!!!!!!!!!!!!!!!!!!!! (temos que refatorar a forma que isso tá sendo avaliado, ficou um tanto confuso)
     if ((opcode = str2enum(operation_string)) != OP_ERROR)
     {
         struct Variable temp_variable;
         struct Instruction temp_instruction;
 
-        // Registrador imediato fica na memória com o "nome" de seu valor
-        if (b_immediate)
+        // Checks if the value is an immediate (branches and syscall parameters are considered immediate here) or a variable
+        if (b_immediate || opcode > 5)
         {
-            struct Variable temp_variable;
-            sprintf(temp_variable.name, "%d", value);
-            temp_variable.value = value;
-            registers[register_count] = temp_variable;
-
-            struct Instruction temp_instruction = {opcode, register_count};
+            struct Instruction temp_instruction = {opcode, IMMEDIATE};
+            temp_instruction.immediate = value;
             
-            instructions[instruction_count] = temp_instruction;
-            instruction_count++;
-            register_count++;
-        }
-        
-        else if (opcode == 10)
-        {
-            struct Instruction temp_instruction;
-            temp_instruction.operation = opcode;
-            temp_instruction.register_index = atoi(temp);
-
             instructions[instruction_count] = temp_instruction;
             instruction_count++;
         }
 
         else
         {            
-            int register_index = -1;
-            for (size_t i = 0; i < register_count; i++) {
-                if (strcmp(register_variable, registers[i].name) == 0)
+            struct Variable *variable_pointer = NULL;
+            for (size_t i = 0; i < variable_count; i++) {
+                if (strcmp(variable, variables[i].name) == 0)
                 {
-                    register_index = i;
+                    variable_pointer = &variables[i];
                     break;
                 }
             }
 
-            if (register_index == -1)
+            if (variable_pointer == NULL)
             {
-                perror("Register not found\n");
+                perror("variable not found\n");
                 return;
             }
 
             struct Instruction temp_instruction;
             temp_instruction.operation = opcode;
-            temp_instruction.register_index = register_index;
+            temp_instruction.type = VAR_POINTER;
+            temp_instruction.var_pointer = variable_pointer;
             
             instructions[instruction_count] = temp_instruction;
             instruction_count++;
@@ -295,8 +295,8 @@ void read_data( char *instruction)
     strcpy(temp_variable.name, variable_name);
     temp_variable.value = value;
 
-    registers[register_count] = temp_variable;
-    register_count++;
+    variables[variable_count] = temp_variable;
+    variable_count++;
 }
 
 // Reads line of instructions, one by one, calling the respective function for its type
@@ -326,6 +326,10 @@ void read_instructions( FILE *fileptr )
         {
             continue;
         }
+        
+        //
+        // (WIP) ULTIMA LINHA DO PROG2 NÃO FUNCIONA AQUI
+        //
 
         // Remove trailing spaces
         char *end = instruction + strlen(instruction) -1;
@@ -360,11 +364,11 @@ void read_instructions( FILE *fileptr )
             continue;
         }
 
-        if (b_code == 0 && strcmp( instruction, ".code") == 0 )
+        if ( b_code == 0 && strcmp(instruction, ".code") == 0 )
         {
             b_code = 1;
         }        
-        else if (b_data == 0 && strcmp( instruction, ".data") == 0 )
+        else if ( b_data == 0 && strcmp(instruction, ".data") == 0 )
         {
             b_data = 1;
         }
@@ -408,16 +412,23 @@ int main( int argc, char **argv )
 
     fclose(fileptr);
 
-    // Test: Prints all registers and instructions on virtual memory
+    // Test: Prints all variables and instructions on virtual memory
     printf("Data:\n");
-    for (size_t i = 0; i < register_count; i++)
+    for (size_t i = 0; i < variable_count; i++)
     {
-        printf(" %lu: %s = %d\n", i, registers[i].name, registers[i].value);
+        printf(" %lu: %s = %d\n", i, variables[i].name, variables[i].value);
     }
-    printf("Instructions:\n");
+    printf("Code Instructions:\n");
     for (size_t i = 0; i < instruction_count; i++)
     {
-        printf(" %lu: OPCODE %d: %s = %d\n", i, instructions[i].operation, registers[instructions[i].register_index].name, registers[instructions[i].register_index].value);
+        char a[256];
+        printf(" %lu: OPCODE %d: %s%s%d\n",
+                        i,
+                        instructions[i].operation,
+                        instructions[i].type==IMMEDIATE? "" : instructions[i].var_pointer->name,
+                        instructions[i].type==IMMEDIATE? "" : " = ",
+                        instructions[i].type==IMMEDIATE? instructions[i].immediate : instructions[i].var_pointer->value
+                    );
     }
 
     return 0;
