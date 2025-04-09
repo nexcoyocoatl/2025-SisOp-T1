@@ -31,14 +31,14 @@ enum Type
     VAR_POINTER
 };
 
-// (WIP) Instructions have an op code an an index for a variable (e.g. acc)
+// Instructions have an op code an an index for a variable
 struct Instruction
 {
     enum Operation operation;
     int type;
     union {
-        struct Variable *var_pointer;
         int immediate;
+        struct Variable *var_pointer;
     };
 };
 
@@ -54,7 +54,7 @@ size_t variable_count; // Counter for number of variables in data
 size_t instruction_count; // "Virtual" memory for instructions (maybe refactor?)
 
 // "Virtual" Memory
-struct Instruction instructions[512]; //
+struct Instruction instructions[512];
 struct Variable variables[32];
 
 // Struct that will create dictionary-like lists of string-value pairs
@@ -164,7 +164,7 @@ void syscall( int index )
             break;
         case 2:
             // printf("Type a value: ");
-            scanf("%d", &acc);
+            scanf("%d", &acc); // (WIP) Mudar pra fgets e fazer trim?
             break;
         default:
             printf("Unknown system call\n");
@@ -172,7 +172,7 @@ void syscall( int index )
 }
 
 //
-// AINDA NÃO FUNCIONA PRO PROG2.TXT
+// (WIP) AINDA NÃO FUNCIONA PRO PROG2.TXT
 // PRECISA FAZER UM CASO PROS LABELS E BRANCHES
 //
 
@@ -332,12 +332,12 @@ void read_instructions( FILE *fileptr )
         //
 
         // Remove trailing spaces
-        char *end = instruction + strlen(instruction) -1;
-        while ( end > instruction && (isspace(instruction[0]) || instruction[0] == '\r' || instruction[0] == '\n' || instruction[0] == '\t'))
+        char *end = instruction + strlen(instruction) - 1;
+        while ( end > instruction && (isspace(end[0]) || end[0] == '\r' || end[0] == '\n' || end[0] == '\t') )
         {
             end--;
         }
-        end[0] = '\0';
+        end[1] = '\0';
 
         if (strcmp( instruction, ".endcode") == 0)
         {
@@ -379,6 +379,12 @@ void read_instructions( FILE *fileptr )
     {
         read_code( temp_code[i] );
     }
+}
+
+int execute_instruction( struct Instruction *instruction )
+{
+    // (WIP)
+    return 0;
 }
 
 // Main only opens one file and stores one program for now
