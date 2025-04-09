@@ -326,10 +326,6 @@ void read_instructions( FILE *fileptr )
         {
             continue;
         }
-        
-        //
-        // (WIP) ULTIMA LINHA DO PROG2 NÃO FUNCIONA AQUI
-        //
 
         // Remove trailing spaces
         char *end = instruction + strlen(instruction) - 1;
