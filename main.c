@@ -6,7 +6,7 @@
 
 // Basic variables used for this abstraction of assembly code
 int acc;
-int pc;
+size_t pc;
 
 // Operations have their own Op Code
 enum Operation
@@ -49,13 +49,29 @@ struct Variable
     int value;
 };
 
+struct Label
+{
+    char name[256];
+    int line_num;
+};
+
+// Temporary struct to iterate through branches and find the label line numbers
+struct
+{
+    size_t instruction_num;
+    char label_name[256];
+} branches[128];
+
 // Counters
-size_t variable_count; // Counter for number of variables in data
-size_t instruction_count; // "Virtual" memory for instructions (maybe refactor?)
+size_t variable_count = 0; // Counter for number of variables in data
+size_t instruction_count = 0; // "Virtual" memory for instructions (maybe refactor?)
+size_t label_count = 0;
+size_t branch_count = 0;
 
 // "Virtual" Memory
 struct Instruction instructions[512];
 struct Variable variables[32];
+struct Label labels[256];
 
 // Struct that will create dictionary-like lists of string-value pairs
 struct Conversion {
@@ -97,9 +113,9 @@ void load( int op1 )
     acc = op1;
 }
 
-void store( int op1 )
+void store( int *op1 )
 {
-    op1 = acc;
+    *op1 = acc;
 }
 
 void add( int op1 )
@@ -124,14 +140,14 @@ void divide( int op1 ) // There's already a "div" in stdlib.h
 
 void brany( int op1 )
 {
-    pc = op1;
+    pc = op1-1;
 }
 
 void brpos( int op1 )
 {
     if (acc > 0)
     {
-        pc = op1;
+        pc = op1-1;
     }
 }
 
@@ -139,7 +155,7 @@ void brzero( int op1 )
 {
     if (acc == 0)
     {
-        pc = op1;
+        pc = op1-1;
     }
 }
 
@@ -147,7 +163,7 @@ void brneg( int op1 )
 {
     if (acc < 0)
     {
-        pc = op1;
+        pc = op1-1;
     }
 }
 
@@ -171,11 +187,6 @@ void syscall( int index )
     }
 }
 
-//
-// (WIP) AINDA NÃO FUNCIONA PRO PROG2.TXT
-// PRECISA FAZER UM CASO PROS LABELS E BRANCHES
-//
-
 // Reads one line of code instructions
 void read_code( char *instruction )
 {
@@ -187,12 +198,32 @@ void read_code( char *instruction )
     int value = 0;
 
     int b_immediate = 0;
+    int b_label = 0;
+
+    if (instruction[strlen(instruction) - 1] == ':')
+    {
+        b_label = 1;
+    }
 
     if ( (temp = strtok(instruction, delim)) != NULL )
-    {        
+    {
+
         for (int i = 0; isalpha(temp[i]); i++)
         {
             temp[i] = toupper(temp[i]);
+        }
+        
+        if (b_label)
+        {
+            temp[strlen(temp) - 1] = '\0';
+            struct Label temp_label;
+            strcpy(temp_label.name, temp);
+            temp_label.line_num = instruction_count;
+            // (WIP)
+            printf("LABEL NAME: %s, LABEL LINE:%d\n", temp_label.name, temp_label.line_num);
+            labels[label_count] = temp_label;
+            label_count++;
+            return;
         }
 
         strcpy(operation_string, temp);
@@ -224,21 +255,37 @@ void read_code( char *instruction )
     {
         struct Variable temp_variable;
         struct Instruction temp_instruction;
+        temp_instruction.operation = opcode;
 
-        // Checks if the value is an immediate (branches and syscall parameters are considered immediate here) or a variable
-        if (b_immediate || opcode > 5)
+        // Checks if the value is an immediate (syscall parameters are considered immediate here) or a variable
+        if (b_immediate)
         {
-            struct Instruction temp_instruction = {opcode, IMMEDIATE};
+            temp_instruction.type = IMMEDIATE;
             temp_instruction.immediate = value;
-            
-            instructions[instruction_count] = temp_instruction;
-            instruction_count++;
+        }
+
+        else if (opcode == 10)
+        {
+            temp_instruction.type = IMMEDIATE;
+            temp_instruction.immediate = atoi(variable);
+        }
+
+        // Is Branch
+        else if (opcode > 5)
+        {
+            // Finds label num in a second iteration
+            branches[branch_count].instruction_num = instruction_count;
+            strcpy(branches[branch_count].label_name, variable);
+            branch_count++;
+
+            temp_instruction.type = IMMEDIATE;
         }
 
         else
         {            
             struct Variable *variable_pointer = NULL;
-            for (size_t i = 0; i < variable_count; i++) {
+            for (size_t i = 0; i < variable_count; i++)
+            {
                 if (strcmp(variable, variables[i].name) == 0)
                 {
                     variable_pointer = &variables[i];
@@ -252,14 +299,12 @@ void read_code( char *instruction )
                 return;
             }
 
-            struct Instruction temp_instruction;
-            temp_instruction.operation = opcode;
             temp_instruction.type = VAR_POINTER;
             temp_instruction.var_pointer = variable_pointer;
-            
-            instructions[instruction_count] = temp_instruction;
-            instruction_count++;
         }
+
+        instructions[instruction_count] = temp_instruction;
+        instruction_count++;
     }
     else
     {
@@ -375,11 +420,177 @@ void read_instructions( FILE *fileptr )
     {
         read_code( temp_code[i] );
     }
+
+    // Finds line number of branches through labels
+    for (size_t i; i < branch_count; i++)
+    {
+        int temp_label_num = -1;
+        for (size_t j = 0; j < label_count; j++)
+        {
+            if (strcmp(branches[i].label_name, labels[j].name) == 0)
+            {
+                temp_label_num = labels[j].line_num;
+            }
+        }
+
+        if (temp_label_num == -1)
+        {
+            perror("label not found\n");
+            return;
+        }
+
+        instructions[branches[i].instruction_num].immediate = temp_label_num;
+    }
 }
 
 int execute_instruction( struct Instruction *instruction )
 {
-    // (WIP)
+    switch (instruction->operation)
+    {        
+        case (ADD):
+        {
+            if ( instruction->type == IMMEDIATE )
+            {
+                add(instruction->immediate);
+                break;
+            }
+
+            add( instruction->var_pointer->value );
+
+            break;
+        }
+        case (SUB):
+        {
+            if ( instruction->type == IMMEDIATE )
+            {
+                sub(instruction->immediate);
+                break;
+            }
+
+            sub( instruction->var_pointer->value );
+
+            break;
+        }
+        case (MULT):
+        {
+            if ( instruction->type == IMMEDIATE )
+            {
+                mult(instruction->immediate);
+                break;
+            }
+
+            mult( instruction->var_pointer->value );
+
+            break;
+        }
+        case (DIV):
+        {
+            if ( instruction->type == IMMEDIATE )
+            {
+                divide(instruction->immediate);
+                break;
+            }
+
+            divide( instruction->var_pointer->value );
+
+            break;
+        }
+        case (LOAD):
+        {
+            load( instruction->var_pointer->value );
+
+            break;
+        }
+        case (STORE):
+        {
+            store( &(instruction->var_pointer->value) );
+
+            break;
+        }
+        case (BRANY):
+        {
+            brany(instruction->immediate);
+
+            break;
+        }
+        case (BRPOS):
+        {
+            brpos(instruction->immediate);
+
+            break;
+        }
+        case (BRZERO):
+        {
+            brzero(instruction->immediate);
+
+            break;
+        }
+        case (BRNEG):
+        {
+            brneg(instruction->immediate);
+
+            break;
+        }
+        case (SYSCALL):
+        {
+            syscall(instruction->immediate);
+
+            break;
+        }
+        case (OP_ERROR):
+        {
+            perror("OPCODE not found");
+        }
+        default:
+        {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+int run_program( struct Instruction *instruction )
+{
+    size_t i = 0;
+    pc = 0;
+    while ( !(instruction[pc].operation == 10 && instruction[pc].immediate == 0) )
+    {
+        if (instruction[pc].type == IMMEDIATE)
+        {
+            printf("%lu: instruction %lu: OPCODE %d-%d", i, pc, instructions[pc].operation, instructions[pc].immediate);    
+        }
+        else
+        {
+            printf("%lu: instruction %lu: OPCODE %d - %s", i, pc, instructions[pc].operation, instructions[pc].var_pointer->name);
+        }
+
+        if (instructions[pc].operation > 5)
+        {
+            printf("\n");
+        }
+
+        execute_instruction(&instruction[pc]);
+        
+        if (instructions[pc].operation <= 5)
+        {
+            printf(" -> ");
+            for (size_t j = 0; j < variable_count; j++)
+            {
+                printf("%s = %d", variables[j].name, variables[j].value);
+
+                if (j != variable_count-1)
+                {
+                    printf(", ");
+                }
+            }
+            printf("\n");
+        }
+
+        pc++;
+        i++;
+    }
+    
     return 0;
 }
 
@@ -432,6 +643,19 @@ int main( int argc, char **argv )
                         instructions[i].type==IMMEDIATE? instructions[i].immediate : instructions[i].var_pointer->value
                     );
     }
+    printf("Labels:\n");
+    for (size_t i = 0; i < label_count; i++)
+    {
+        printf(" %lu: Label %s - line %d\n", i, labels[i].name, labels[i].line_num);
+    }
+
+    printf("Branches:\n");
+    for (size_t i = 0; i < branch_count; i++)
+    {
+        printf(" %lu: Branch %s - instruction %lu\n", i, branches[i].label_name, branches[i].instruction_num);
+    }
+
+    run_program(instructions);
 
     return 0;
 }
