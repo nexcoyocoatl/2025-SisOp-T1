@@ -1,0 +1,17 @@
+.code
+ load a
+ sub b
+ BRANY loop
+
+loop:
+ sub #1
+ syscall 1
+ BRPOS loop
+ store a
+ syscall 0
+.endcode
+
+.data
+ a 5
+ b 2
+.enddata

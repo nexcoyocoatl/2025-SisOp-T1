@@ -1,0 +1,12 @@
+.code
+ load a
+ sub b
+ add #3
+ store a
+ syscall 0
+.endcode
+
+.data
+ a 3
+ b 8
+.enddata

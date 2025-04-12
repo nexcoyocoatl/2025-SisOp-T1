@@ -1,0 +1,26 @@
+.code
+ LOAD n
+ SYSCALL 2
+ STORE n
+ LOAD m
+ SYSCALL 2
+ STORE m
+ loop:
+  LOAD n
+  MULT m
+  ADD total
+  STORE total
+  LOAD n
+  SUB #1
+  STORE n
+  BRPOS loop
+ LOAD total
+ SYSCALL 1
+ SYSCALL 0
+.endcode
+
+.data
+ n 0
+ m 0
+ total 0
+.enddata
