@@ -349,7 +349,7 @@ void read_data( char *instruction)
 void read_instructions( FILE *fileptr )
 {
     char s[256];
-    char *instruction;
+    char *instruction = NULL;
     char temp_code[512][256];
     size_t temp_code_i = 0;
 
@@ -368,7 +368,7 @@ void read_instructions( FILE *fileptr )
         }
 
         // Ignore if it's only spaces
-        if (*instruction == 0)
+        if (*instruction == '\0')
         {
             continue;
         }
@@ -423,7 +423,7 @@ void read_instructions( FILE *fileptr )
     }
 
     // Finds line number of branches through labels
-    for (size_t i; i < branch_count; i++)
+    for (size_t i = 0; i < branch_count; i++)
     {
         int temp_label_num = -1;
         for (size_t j = 0; j < label_count; j++)
@@ -599,7 +599,7 @@ int run_program( struct Instruction *instruction )
 // Main only opens one file and stores one program for now
 int main( int argc, char **argv )
 { 
-    FILE* fileptr;
+    FILE* fileptr = NULL;
 
     if (argc == 2)
     {
