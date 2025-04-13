@@ -1,12 +1,19 @@
 #include <ctype.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 // Basic variables used for this abstraction of assembly code
-int acc;
-size_t pc;
+int acc = 0;
+size_t pc = 0;
+
+// Counters
+size_t variable_count = 0; // Counter for number of variables in data
+size_t instruction_count = 0; // "Virtual" memory for instructions (maybe refactor?)
+size_t label_count = 0;
+size_t branch_count = 0;
+
+enum Operation str2enum(const char *s);
 
 // Operations have their own Op Code
 enum Operation
@@ -61,12 +68,6 @@ struct
     size_t instruction_num;
     char label_name[256];
 } branches[128];
-
-// Counters
-size_t variable_count = 0; // Counter for number of variables in data
-size_t instruction_count = 0; // "Virtual" memory for instructions (maybe refactor?)
-size_t label_count = 0;
-size_t branch_count = 0;
 
 // "Virtual" Memory
 struct Instruction instructions[512];
@@ -194,8 +195,8 @@ void read_code( char *instruction )
     char *temp;
     char operation_string[128];
     char variable[128];
-    int opcode;
-    int value = 0;
+    int opcode = -1;
+    int value = -1;
 
     int b_immediate = 0;
     int b_label = 0;
@@ -208,7 +209,7 @@ void read_code( char *instruction )
     if ( (temp = strtok(instruction, delim)) != NULL )
     {
 
-        for (int i = 0; isalpha(temp[i]); i++)
+        for (int i = 0; temp[i] != '\0'; i++)
         {
             temp[i] = toupper(temp[i]);
         }
@@ -233,7 +234,7 @@ void read_code( char *instruction )
     {
         while(isspace((unsigned char)*temp)) temp++;
 
-        for (int i = 0; isalpha(temp[i]); i++)
+        for (int i = 0; temp[i] != '\0'; i++)
         {
             temp[i] = toupper(temp[i]);
         }
@@ -318,11 +319,11 @@ void read_data( char *instruction)
     char delim[] = "\n\r ";
     char *temp;
     char variable_name[128];
-    int value;
+    int value = -1;
 
     if ( (temp = strtok(instruction, delim)) != NULL )
     {        
-        for (int i = 0; isalpha(temp[i]); i++)
+        for (int i = 0; temp[i] != '\0'; i++)
         {
             temp[i] = toupper(temp[i]);
         }
@@ -350,7 +351,7 @@ void read_instructions( FILE *fileptr )
     char s[256];
     char *instruction;
     char temp_code[512][256];
-    size_t temp_code_i;
+    size_t temp_code_i = 0;
 
     int b_code = 0;
     int b_data = 0;
@@ -554,6 +555,7 @@ int run_program( struct Instruction *instruction )
 {
     size_t i = 0;
     pc = 0;
+
     while ( !(instruction[pc].operation == 10 && instruction[pc].immediate == 0) )
     {
         if (instruction[pc].type == IMMEDIATE)
