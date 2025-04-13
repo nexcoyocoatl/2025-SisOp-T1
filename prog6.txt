@@ -1,0 +1,37 @@
+.code
+ load x
+ syscall 2
+ store x
+ load y
+ syscall 2
+ store y
+ load x
+ BRNEG menor_que_zero
+ BRZERO igual_a_zero
+ BRPOS maior_que_zero
+ BRANY fim
+menor_que_zero:
+ mult y
+ store resultado
+ BRANY fim
+igual_a_zero:
+ add y
+ add #3
+ store resultado
+ BRANY fim
+maior_que_zero:
+ load y
+ div x
+ store resultado
+ BRANY fim
+fim:
+ load resultado
+ syscall 1
+ syscall 0
+.endcode
+
+.data
+ resultado 0
+ x 0
+ y 0
+.enddata
