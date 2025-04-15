@@ -1,3 +1,4 @@
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
@@ -5,10 +6,11 @@ import java.util.Scanner;
 public class Escalonador {
     public static List<Programa> readyQueue = new LinkedList<>();
     public static List<Programa> waitQueue = new LinkedList<>();
+    public static List<Programa> creating = new LinkedList<>();
     public static void main(String[] args) {
 
-        auto();
-        // criarProgramas();
+        auto2();
+        //criarProgramas();
         // listarProgramas();
 
         executarProgramas();
@@ -18,22 +20,64 @@ public class Escalonador {
     // https://moodle.pucrs.br/pluginfile.php/4882481/mod_resource/content/4/escalonamento.pdf
     // pag 24
     public static void auto() {
-        Programa a1 = new Programa(50,75,1,25);
-        Programa a2 = new Programa(80,70,2,35);
-        readyQueue.add(a2);
-        readyQueue.add(a1);
+        Programa a1 = new Programa(50,75,1,25,0);
+        Programa a2 = new Programa(80,70,2,35,0);
+        
+        creating.add(a1); creating.add(a2);
     }
 
-    // Problema conhecido: se um programa tiver input de usuario (syscall 2), trava toda execucao
-    // Solucao proposta: threads ou forks, criacao de uma ioQueue
+    public static void auto2() {
+        Programa a1 = new Programa(5,15,1,3,2);
+        Programa a2 = new Programa(3,10,2,2,0);
+        
+        creating.add(a1); creating.add(a2);
+    }
 
-    // Problema conhecido 2: processador em idle, quando não há programas em readyQueue, ele quebra
+    // Problema: processador em idle (OK)
+    // Problema: arrivalTime (OK)
+    // Problema: perda de deadline (OK)
     public static void executarProgramas() {
 
         int counter = 0; // contador de unidades de tempo
 
-        Programa p = readyQueue.get(0);
-        while (!readyQueue.isEmpty() || !waitQueue.isEmpty()) {
+        // programa dummy para quando processador estiver em idle
+        Programa dummy = new Programa(999, 999, 999, 999, 999);
+        
+        Programa p = dummy;
+        while (!readyQueue.isEmpty() || !waitQueue.isEmpty() || !creating.isEmpty()) {
+
+            // verifica por processos que nao foram inicializados ainda
+            if (!creating.isEmpty()) {
+                Iterator<Programa> it = creating.iterator();
+                while (it.hasNext()) {
+                    Programa i = it.next();
+                    if (i.arrivalTime == counter) {
+                        System.out.printf("Adicionando programa %d a readyQueue em %d\n", i.id, counter);
+                        readyQueue.add(i);
+                        it.remove();
+                    }
+                }
+            }
+
+            // processador em idle
+            if (readyQueue.isEmpty()) {
+                System.out.println("idle em " + counter);
+                if (!waitQueue.isEmpty()) {
+                    Iterator<Programa> it = waitQueue.iterator();
+                    while (it.hasNext()) {
+                        Programa i = it.next();
+                        if (counter >= i.nextDeadline) {
+                            i.nextDeadline = counter + i.deadline;
+                            i.tempoRestante = i.tempo;
+                            it.remove();
+                            readyQueue.add(i);
+                        }
+                    }
+                }
+                counter++;
+                continue;
+            }
+
             // seleciona programa com deadline mais proxima em readyQueue
             for (Programa temp : readyQueue) {
                 if (temp.nextDeadline < p.nextDeadline) {
@@ -42,11 +86,24 @@ public class Escalonador {
                 }
             }
             
-
             // "Le" instrucoes do programa
             p.pc++;
             p.tempoRestante--;
             counter++;
+
+            // Programa terminado
+            if (p.pc == p.numInstrucoes) {
+                System.out.printf("Programa %d terminado em %d\n", p.id, counter);
+                readyQueue.remove(p);
+                p = dummy;
+            }
+
+            // Deadline perdida
+            if (p.nextDeadline == counter && p.tempoRestante != 0) {
+                System.out.printf("Deadline de programa %d perdida em %d\n", p.id, counter);
+                p.nextDeadline = counter + p.deadline;
+                p.tempoRestante = p.tempo;
+            } 
 
             // Deadline satisfeita
             if (p.tempoRestante == 0) {
@@ -55,23 +112,26 @@ public class Escalonador {
                 waitQueue.add(p);
 
                 // troca para outro programa
-                p = readyQueue.get(0);
-                System.out.printf("Trocando para programa %d em %d\n", p.id, counter);
+                if (!readyQueue.isEmpty()){
+                    p = readyQueue.get(0);
+                    System.out.printf("Trocando para programa %d em %d\n", p.id, counter);
+                } else {
+                    p = dummy;
+                }
             }
 
-            // Programa terminado
-            if (p.pc == p.numInstrucoes) {
-                System.out.printf("Programa %d terminado em %d\n", p.id, counter);
-                readyQueue.remove(p);
-            }
             
             // verifica por programas da waitQueue que devem voltar para readyQueue
-            for (Programa i : waitQueue) {
-                if (counter == i.nextDeadline) {
-                    i.nextDeadline += i.deadline;
-                    i.tempoRestante += i.tempo;
-                    waitQueue.remove(i);
-                    readyQueue.add(i);
+            if (!waitQueue.isEmpty()) {
+                Iterator<Programa> it = waitQueue.iterator();
+                while (it.hasNext()) {
+                    Programa i = it.next();
+                    if (counter >= i.nextDeadline) {
+                        i.nextDeadline = counter + i.deadline;
+                        i.tempoRestante = i.tempo;
+                        it.remove();
+                        readyQueue.add(i);
+                    }
                 }
             }
         }
@@ -94,11 +154,14 @@ public class Escalonador {
             System.out.printf("Forneca o numero de instrucoes do programa %d\n> ", i+1);
             int numInstrucoes = in.nextInt();
 
-            System.out.printf("Criando programa %d...\n", i+1);
-            Programa prog = new Programa(deadline, numInstrucoes, i+1, tempo);
+            System.out.printf("Forneça o tempo de chegada do programa %d\n> ", i+1);
+            int arrivalTime = in.nextInt();
 
-            System.out.printf("Adicionando programa %d a readyQueue...\n", i+1);
-            readyQueue.add(prog);
+            System.out.printf("Criando programa %d...\n", i+1);
+            Programa prog = new Programa(deadline, numInstrucoes, i+1, tempo, arrivalTime);
+
+            System.out.printf("Adicionando programa %d a creating...\n", i+1);
+            creating.add(prog);
 
             System.out.println("Ok\n");
         }
@@ -118,6 +181,7 @@ public class Escalonador {
         }
     }
 
+    // lista programas existentes na waitQueue
     public static void printWait() {
         System.out.println("Programas na waitQueue:");
         for (Programa p : waitQueue) {
@@ -125,6 +189,19 @@ public class Escalonador {
             System.out.println(  "id: "+p.id+
                                "\ndeadline: "+p.deadline+
                                "\nnumInstrucoes:"+p.numInstrucoes);
+            System.out.println("]");
+        }
+    }
+
+    // lista programas existentes na creating
+    public static void printCreating() {
+        System.out.println("Programas na creating:");
+        for (Programa p : waitQueue) {
+            System.out.println("[");
+            System.out.println(  "id: "+p.id+
+                               "\ndeadline: "+p.deadline+
+                               "\nnumInstrucoes: "+p.numInstrucoes+
+                               "\narrivalTime: "+p.arrivalTime);
             System.out.println("]");
         }
     }
