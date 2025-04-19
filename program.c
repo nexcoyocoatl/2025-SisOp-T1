@@ -105,12 +105,11 @@ void syscall( struct Program *program, int index )
         case 0:
             break;
         case 1:
-            // printf("acc = ");
-            printf("%d\n", program->acc);
+            printf("PID %lu: prints %d\n", program->id, program->acc);
             break;
         case 2:
-            // printf("Type a value: ");
-            scanf("%d", &program->acc); // (WIP) Mudar pra fgets e fazer trim?
+            printf("PID %lu: user types %d\n", program->id, program->auto_user_input);
+            program->acc = program->auto_user_input;
             break;
         default:
             printf("Unknown system call, halting program %lu\n--------------------------------------\n", program->id);
@@ -149,8 +148,6 @@ void read_code( struct Program *program, char *instruction )
             struct Label temp_label;
             strcpy(temp_label.name, temp);
             temp_label.line_num = program->instruction_count;
-            // (WIP)
-            printf("LABEL NAME: %s, LABEL LINE:%d\n", temp_label.name, temp_label.line_num);
             labels[label_count] = temp_label;
             label_count++;
             return;
@@ -372,6 +369,7 @@ void read_instructions( struct Program *program, FILE *fileptr )
     }
 }
 
+// Execute one program instruction based on its program counter
 int execute_instruction( struct Program *program )
 {
     struct Instruction *instruction = &program->instructions[program->pc];
@@ -478,18 +476,20 @@ int execute_instruction( struct Program *program )
         }
     }
 
-    return 0;
+    return 1;
 }
 
+// Runs the program, executes and prints every instruction and then increments its PC
 int run_program( struct Program *program )
 {
     program->b_running = 1;
-    int b_program_end = 0;
+    int b_program_stop = 0;
     size_t i = 0;
 
     printf("instruction count = %lu\n", program->instruction_count);
     printf("variable count = %lu\n", program->variable_count);
 
+    // Program stops after every syscall, and will have to be given permission by the scheduler to run again
     while ( program->b_running )
     {
         size_t program_pc = program->pc;
@@ -526,11 +526,21 @@ int run_program( struct Program *program )
             printf("\n");
         }
 
-        if ( program_instruction->operation == 10 && program_instruction->immediate == 0 )
+        // if ( program_instruction->operation == 10 && program_instruction->immediate == 0 )
+        // {
+        //     program->b_running = 0;
+        //     b_program_end = 1;
+        //     break;
+        // }
+        if ( program_instruction->operation == 10 ) // Interrupt, will be resumed if it has an early deadline
         {
             program->b_running = 0;
-            b_program_end = 1;
-            break;
+            b_program_stop = 1;
+
+            if (program_instruction->immediate == 0)
+            {
+                program->b_finished = 1;
+            }
         }
 
         program->pc++;
@@ -551,23 +561,49 @@ int run_program( struct Program *program )
     if (!program->b_running)
     {
         printf("Program %lu halted at instruction %lu/%lu\n--------------------------------------\n",
-            program->id, program->pc+1, program->instruction_count);
+            program->id, program->pc, program->instruction_count);
     }
 
-    if (b_program_end)
+    if (program->b_finished == 1)
     {
         program->pc = 0;
+        program->acc = 0;
     }
-
-    program->acc = 0;
     
-    return 0;
+    return 1;
 }
 
-struct Program* program_setup( FILE* fileptr )
+int calculate_deadline( struct Program *program )
 {
-    struct Program *program = malloc(sizeof(struct Program));
+    program->pc = 0;
+    program->acc = 0;
+    size_t syscall_count = 1;
 
+    while(1)
+    {
+        execute_instruction(program);
+        if ( program->instructions[program->pc].operation == 10 )
+        {
+            if (program->instructions[program->pc].immediate == 0)
+            {
+                break;
+            }
+            syscall_count++;
+        }
+        program->pc++;
+    }
+
+    program->pc = 0;
+    program->acc = 0;
+
+    program->deadline = syscall_count * program->processing_time;
+    printf("PID %lu: syscall count = %lu, deadline = %lu\n", program->id, syscall_count, program->deadline);
+
+    return 1;
+}
+
+int program_setup( struct Program *program, FILE* fileptr, size_t processing_time, int auto_user_input )
+{
     program->id = program_id_count;
     branches = malloc( sizeof(struct Branch) * 256 );
     labels = malloc(sizeof(struct Label) * 256);
@@ -579,46 +615,49 @@ struct Program* program_setup( FILE* fileptr )
     branch_count = 0;
 
     program->b_running = 0;
+    program->b_finished = 0;
     program->acc = 0;
     program->pc = 0;
+    program->processing_time = processing_time;
+    program->auto_user_input = auto_user_input;
 
     read_instructions(program, fileptr);
 
     // Test: Prints all variables and instructions on virtual memory
-    printf("Data:\n");
-    for (size_t i = 0; i < program->variable_count; i++)
-    {
-        printf(" %lu: %s = %d\n", i, program->variables[i].name, program->variables[i].value);
-    }
-    printf("Code Instructions:\n");
-    for (size_t i = 0; i < program->instruction_count; i++)
-    {
-        printf(" %lu: OPCODE %d: %s%s%d\n",
-                        i,
-                        program->instructions[i].operation,
-                        program->instructions[i].type==IMMEDIATE? "" : program->instructions[i].var_pointer->name,
-                        program->instructions[i].type==IMMEDIATE? "" : " = ",
-                        program->instructions[i].type==IMMEDIATE? program->instructions[i].immediate : program->instructions[i].var_pointer->value
-                    );
-    }
-    printf("Labels:\n");
-    for (size_t i = 0; i < label_count; i++)
-    {
-        printf(" %lu: Label %s - line %d\n", i, labels[i].name, labels[i].line_num);
-    }
-
-    printf("Branches:\n");
-    for (size_t i = 0; i < branch_count; i++)
-    {
-        printf(" %lu: Branch %s - instruction %lu\n", i, branches[i].label_name, branches[i].instruction_num);
-    }
+    // printf("Data:\n");
+    // for (size_t i = 0; i < program->variable_count; i++)
+    // {
+    //     printf(" %lu: %s = %d\n", i, program->variables[i].name, program->variables[i].value);
+    // }
+    // printf("Code Instructions:\n");
+    // for (size_t i = 0; i < program->instruction_count; i++)
+    // {
+    //     printf(" %lu: OPCODE %d: %s%s%d\n",
+    //                     i,
+    //                     program->instructions[i].operation,
+    //                     program->instructions[i].type==IMMEDIATE? "" : program->instructions[i].var_pointer->name,
+    //                     program->instructions[i].type==IMMEDIATE? "" : " = ",
+    //                     program->instructions[i].type==IMMEDIATE? program->instructions[i].immediate : program->instructions[i].var_pointer->value
+    //                 );
+    // }
+    // printf("Labels:\n");
+    // for (size_t i = 0; i < label_count; i++)
+    // {
+    //     printf(" %lu: Label %s - line %d\n", i, labels[i].name, labels[i].line_num);
+    // }
+    //
+    // printf("Branches:\n");
+    // for (size_t i = 0; i < branch_count; i++)
+    // {
+    //     printf(" %lu: Branch %s - instruction %lu\n", i, branches[i].label_name, branches[i].instruction_num);
+    // }
 
     free(branches);
     free(labels);
 
+    calculate_deadline(program);
+
     program_id_count++;
 
-    printf("||| %p - %p |||\n", &program->variables[0], program->instructions[0].var_pointer);
-
-    return program;
+    return 1;
 }

@@ -72,12 +72,17 @@ struct Program {
     int acc;
 
     size_t deadline;
-    size_t tempo;
     size_t next_deadline;
-    size_t times_completed;
+    size_t processing_time;
     size_t time_remaining;
+    size_t arrival_time;
+    int auto_user_input;
+
+    size_t syscall_time;
+    size_t syscall_count;
 
     int b_running;
+    int b_finished;
 
     // Counters
     size_t variable_count; // Counter for number of variables in data
@@ -124,7 +129,9 @@ int execute_instruction( struct Program *program );
 
 int run_program( struct Program *program );
 
+int calculate_deadline( struct Program *program );
+
 // Main only opens one file and stores one program for now
-struct Program* program_setup( FILE* fileptr );
+int program_setup( struct Program *program, FILE* fileptr, size_t processing_time, int auto_user_input );
 
 #endif
