@@ -27,11 +27,11 @@ int main( int argc, char **argv )
         return 1;
     }
 
-    program_setup(fileptr);
+    struct Program *p1 = program_setup(fileptr);
 
     fclose(fileptr);
 
-    run_program();
+    run_program(p1);
 
     return 0;
 }

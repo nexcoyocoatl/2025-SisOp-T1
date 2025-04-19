@@ -66,43 +66,65 @@ struct Conversion {
     const char *str;
 };
 
+struct Program {
+    size_t id;
+    size_t pc;
+    int acc;
+
+    size_t deadline;
+    size_t tempo;
+    size_t next_deadline;
+    size_t times_completed;
+    size_t time_remaining;
+
+    int b_running;
+
+    // Counters
+    size_t variable_count; // Counter for number of variables in data
+    size_t instruction_count; // "Virtual" memory for instructions (maybe refactor?)
+
+    // "Virtual" Memory
+    struct Instruction instructions[512];
+    struct Variable variables[32];
+};
+
 // Operation functions
-void load( int op1 );
+void load( struct Program *program, struct Variable *op1 );
 
-void store( int *op1 );
+void store( struct Program *program, struct Variable *op1 );
 
-void add( int op1 );
+void add( struct Program *program, int op1 );
 
-void sub( int op1 );
+void sub( struct Program *program, int op1 );
 
-void mult( int op1 );
+void mult( struct Program *program, int op1 );
 
-void divide( int op1 ); // There's already a "div" in stdlib.h
+void divide( struct Program *program, int op1 ); // There's already a "div" in stdlib.h
 
-void brany( int op1 );
+void brany( struct Program *program, int op1 );
 
-void brpos( int op1 );
+void brpos( struct Program *program, int op1 );
 
-void brzero( int op1 );
+void brzero( struct Program *program, int op1 );
 
-void brneg( int op1 );
+void brneg( struct Program *program, int op1 );
 
-void syscall( int index );
+void syscall( struct Program *program, int index );
 
 // Reads one line of code instructions
-void read_code( char *instruction );
+void read_code( struct Program *program, char *instruction );
 
 // Reads one line of data instructions
-void read_data( char *instruction);
+void read_data( struct Program *program, char *instruction);
 
 // Reads line of instructions, one by one, calling the respective function for its type
-void read_instructions( FILE *fileptr );
+void read_instructions( struct Program *program, FILE *fileptr );
 
-int execute_instruction( struct Instruction *instruction );
+int execute_instruction( struct Program *program );
 
-int run_program();
+int run_program( struct Program *program );
 
 // Main only opens one file and stores one program for now
-int program_setup( FILE* fileptr );
+struct Program* program_setup( FILE* fileptr );
 
 #endif
