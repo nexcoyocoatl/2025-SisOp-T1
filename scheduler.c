@@ -73,9 +73,10 @@ void scheduler_execute_programs()
             if (wait_queue->size > 0)
             {
                 it = wait_queue->head;
-                while (it != NULL)
+                struct Program *i = it->program;
+                while (it != NULL && (counter >= i->next_deadline))
                 {
-                    struct Program *i = it->program;
+                    i = it->program;
                     if (counter >= i->next_deadline)
                     {
                         i->next_deadline = counter + i->deadline;
@@ -83,7 +84,7 @@ void scheduler_execute_programs()
                         proglist_add_node(ready_queue, i);
                         proglist_remove_node_index(wait_queue, 0);
                     }
-                    it = it->next; // (WIP) vai dar problema
+                    it = wait_queue->head;
                 }
             }
             counter++;
@@ -103,24 +104,20 @@ void scheduler_execute_programs()
             it = it->next;
         }
 
-        printf("PID %lu: running\n", p->id);
-
-        // Runs the program until every syscall (WIP) (PRECISO ARRUMAR AQUI, PROGRAMA NÃO RODA INSTRUĆÕES)
-        p->b_running = 1;
-        while (p->b_running == 1)
+        if (p != &dummy)
         {
-            if (p == &dummy)
+            printf("PID %lu: running\n", p->id);
+            // Runs the program until every syscall (WIP) (PRECISO ARRUMAR AQUI, PROGRAMA NÃO RODA INSTRUĆÕES)
+            p->b_running = 1;
+            while (p->b_running == 1)
             {
-                printf("On idle\n");
-                counter++;
-                continue;
+                run_program(p);
             }
-            run_program(p);
+            // Adds the processing_time until the interrupt of the program to the timer counter
+            // (WIP) ACHO QUE AQUI É UM PROBLEMA
+            p->time_remaining -= p->processing_time;
+            counter += p->processing_time;
         }
-        // Adds the processing_time until the interrupt of the program to the timer counter
-        // (WIP) ACHO QUE AQUI É UM PROBLEMA
-        p->time_remaining -= p->processing_time;
-        counter += p->processing_time;
 
         // Program finished
         if (p->b_finished)
@@ -168,7 +165,6 @@ void scheduler_execute_programs()
                 i->time_remaining = i->processing_time;
                 proglist_add_node(ready_queue, i);
                 proglist_remove_node_index(wait_queue, 0);
-                proglist_dump(wait_queue);
                 it = wait_queue->head;
             }
         }
