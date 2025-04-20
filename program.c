@@ -476,8 +476,8 @@ int run_program( struct Program *program )
     int b_program_stop = 0;
     size_t i = 0;
 
-    printf("PID %lu: Instruction count = %lu\n", program->id, program->instruction_count);
-    printf("PID %lu: Variable count = %lu\n", program->id, program->variable_count);
+    //printf("PID %lu: Instruction count = %lu\n", program->id, program->instruction_count);
+    //printf("PID %lu: Variable count = %lu\n", program->id, program->variable_count);
 
 
     // Program stops after every syscall, and will have to be given permission by the scheduler to run again
@@ -488,11 +488,11 @@ int run_program( struct Program *program )
 
         if (program_instruction->type == IMMEDIATE)
         {
-            printf("PID %lu: counter %lu, instruction %lu: OPCODE %d-%d", program->id, i, program_pc, program_instruction->operation, program_instruction->immediate);    
+            //printf("PID %lu: counter %lu, instruction %lu: OPCODE %d-%d", program->id, i, program_pc, program_instruction->operation, program_instruction->immediate);    
         }
         else
         {
-            printf("PID %lu: counter %lu, instruction %lu: OPCODE %d - %s", program->id, i, program_pc, program_instruction->operation, program_instruction->var_pointer->name);
+            //printf("PID %lu: counter %lu, instruction %lu: OPCODE %d - %s", program->id, i, program_pc, program_instruction->operation, program_instruction->var_pointer->name);
         }
 
         if (program->instructions[program->pc].operation > 5)
@@ -504,17 +504,17 @@ int run_program( struct Program *program )
         
         if (program_instruction->operation <= 5)
         {
-            printf(" | Variables: ");
+            //printf(" | Variables: ");
             for (size_t j = 0; j < program->variable_count; j++)
             {
-                printf("%s = %d", program->variables[j].name, program->variables[j].value);
+                //printf("%s = %d", program->variables[j].name, program->variables[j].value);
 
                 if (j != program->variable_count-1)
                 {
-                    printf(", ");
+                    //printf(", ");
                 }
             }
-            printf("\n");
+            //printf("\n");
         }
 
         if ( program_instruction->operation == 10 ) // Interrupt, will be resumed if it has an early deadline
@@ -544,17 +544,17 @@ int run_program( struct Program *program )
         i++;
     }
 
-    printf("PID %lu: Variables: ", program->id);
+    //printf("PID %lu: Variables: ", program->id);
     for (size_t j = 0; j < program->variable_count; j++)
     {
-        printf("%s = %d", program->variables[j].name, program->variables[j].value);
+        //printf("%s = %d", program->variables[j].name, program->variables[j].value);
 
         if (j != program->variable_count-1)
         {
-            printf(", ");
+            //printf(", ");
         }
     }
-    printf("\n");
+    //printf("\n");
 
     if (!program->b_running)
     {
@@ -598,7 +598,7 @@ int calculate_deadline( struct Program *program )
     program->acc = 0;
 
     program->deadline = syscall_count * program->processing_time;
-    printf("PID %lu: syscall count = %lu, deadline = %lu\n", program->id, syscall_count, program->deadline);
+    //printf("PID %lu: syscall count = %lu, deadline = %lu\n", program->id, syscall_count, program->deadline);
 
     return 1;
 }

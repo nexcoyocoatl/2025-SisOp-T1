@@ -48,45 +48,66 @@ void scheduler_execute_programs()
     while (ready_queue->size > 0 || wait_queue->size > 0 || creating->size > 0 )
     {
         struct Node *it;
-
+        
         // Checks for uninitialized programs
         if (creating->size > 0)
         {
-            it = creating->head;
-            while (it != NULL)
+            struct Program *ti = proglist_get(creating, 0);
+            size_t index = 0;
+            struct Program *i;
+            while (ti != NULL)
             {
-                struct Program *i = it->program;
-                if (i->arrival_time == counter)
+                // printf("----------------\n");
+                i = ti;
+                if (counter >= i->arrival_time)
                 {
-                    printf("PID %lu added to ready_queue at position %lu.\n", i->id, counter);
+                    printf("PID %lu added to ready_queue from creating at time %lu.\n", i->id, counter);
+                    i = ti;
+                    i->next_deadline = counter + i->deadline;
+                    i->time_remaining = i->processing_time;
                     proglist_add_node(ready_queue, i);
-                    proglist_remove_node_index(creating, 0);
+                    proglist_remove_node_index(creating, index);
+                    index--;
+                } else {
+                    printf("Skipping creating PID %lu: time %d, arrival %lu\n", i->id, counter, i->arrival_time);
                 }
-                it = creating->head;
+                //printf("incrementing index: ");
+                index++;
+                //printf("%d\n",index);
+                ti = proglist_get(creating, index);
+                //proglist_dump(creating);
             }
         }
+        
+        // exit(0); // só para testar a primeira execucao de creating
         
         // CPU on idle
         if (ready_queue->size <= 0)
         {
-            printf("idle on time %lu.\n", counter);
+            printf("Idle on time %lu.\n", counter);
+
+            // Checks for wait_queue programs that should get back in the ready_queue
             if (wait_queue->size > 0)
             {
+                size_t index = 0;
                 it = wait_queue->head;
                 struct Program *i = it->program;
-                while (it != NULL && (counter >= i->next_deadline))
+                while (it != NULL)
                 {
-                    i = it->program;
-                    if (counter >= i->next_deadline)
-                    {
+                    if (counter >= i->next_deadline) {
+                        i = it->program;
                         i->next_deadline = counter + i->deadline;
                         i->time_remaining = i->processing_time;
                         proglist_add_node(ready_queue, i);
-                        proglist_remove_node_index(wait_queue, 0);
+                        proglist_remove_node_index(wait_queue, index);
+                        proglist_dump(wait_queue);
+                        index--;
                     }
-                    it = wait_queue->head;
+                    index++;
+                    it = proglist_get(wait_queue, index);
                 }
             }
+
             counter++;
             continue;
         }
@@ -104,10 +125,11 @@ void scheduler_execute_programs()
             it = it->next;
         }
 
+        printf("PID %lu: running\n", p->id);
+
+        // Runs the program until every syscall (WIP) (PRECISO ARRUMAR AQUI, PROGRAMA NÃO RODA INSTRUĆÕES)
         if (p != &dummy)
         {
-            printf("PID %lu: running\n", p->id);
-            // Runs the program until every syscall (WIP) (PRECISO ARRUMAR AQUI, PROGRAMA NÃO RODA INSTRUĆÕES)
             p->b_running = 1;
             while (p->b_running == 1)
             {
@@ -151,23 +173,7 @@ void scheduler_execute_programs()
             {
                 p = &dummy;
             }
-        }
-
-        // Checks for wait_queue programs that should get back in the ready_queue
-        if (wait_queue->size > 0)
-        {
-            it = wait_queue->head;
-            struct Program *i = it->program;
-            while (it != NULL && (counter >= i->next_deadline))
-            {
-                i = it->program;
-                i->next_deadline = counter + i->deadline;
-                i->time_remaining = i->processing_time;
-                proglist_add_node(ready_queue, i);
-                proglist_remove_node_index(wait_queue, 0);
-                it = wait_queue->head;
-            }
-        }
+        }        
     }
 }
 

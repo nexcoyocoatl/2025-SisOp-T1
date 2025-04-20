@@ -73,13 +73,13 @@ int read_file(char* filepath)
     switch (program_count)
     {
         case 0:
-            program_setup(&programs[program_count], fileptr, 3, 0, 3);
+            program_setup(&programs[program_count], fileptr, 3, 5, 5);
             break;
         case 1:
-            program_setup(&programs[program_count], fileptr, 3, 0, 9);
+            program_setup(&programs[program_count], fileptr, 3, 0, 7);
             break;
         case 2:
-            program_setup(&programs[program_count], fileptr, 3, 0, 18);
+            program_setup(&programs[program_count], fileptr, 3, 0, 3);
             break;
     }
 

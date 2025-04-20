@@ -109,7 +109,7 @@ int proglist_remove_node_index(struct Program_list* lst, size_t index)
 
     struct Node* current = lst->head;
 
-    if (counter == 0)
+    if (index == 0)
     {
         lst->head = lst->head->next;
         lst->size--;
@@ -125,7 +125,7 @@ int proglist_remove_node_index(struct Program_list* lst, size_t index)
 
     while (current->next != NULL)
     {
-        index++;
+        counter++;
         if (counter == index)
         {
             struct Node* temp = current->next;
@@ -145,7 +145,7 @@ int proglist_remove_node_index(struct Program_list* lst, size_t index)
                 lst->tail = NULL;
             }
 
-            return 1;
+            return 2;
         }
         current = current->next;
     }
@@ -155,32 +155,23 @@ int proglist_remove_node_index(struct Program_list* lst, size_t index)
 
 struct Program *proglist_get(struct Program_list* lst, size_t index)
 {
-    struct Program *program = NULL;
-    size_t counter = 0;
-
-    if (lst->size == 0)
-    {
-        return NULL;
-    }
-
-    // if (index == 0)
-    // {
-    //     return lst->head->program;
-    // }
-
+    if (lst->size == 0) return NULL;
+        
     struct Node* current = lst->head;
+    size_t counter = 0;
 
     while(current != NULL)
     {
-        if (counter == index)
-        {
+        if (counter == index) {
+            //printf("get returning pid %lu\n", current->program->id);
             return current->program;
         }
         counter++;
         current = current->next;
     }
 
-    return program;
+    //printf("get null\n");
+    return NULL;
 }
 
 int proglist_index_of(struct Program_list* lst, size_t program_id)
