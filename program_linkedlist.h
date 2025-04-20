@@ -21,6 +21,7 @@ size_t proglist_len(struct Program_list* lst);
 void proglist_add_node(struct Program_list* lst, struct Program *program);
 int proglist_remove_node(struct Program_list* lst, size_t program_id);
 int proglist_remove_node_index(struct Program_list* lst, size_t index);
+struct Program *proglist_get(struct Program_list* lst, size_t index);
 int proglist_index_of(struct Program_list* lst, size_t program_id);
 void proglist_dump(struct Program_list* lst);
 void proglist_clear(struct Program_list* lst);

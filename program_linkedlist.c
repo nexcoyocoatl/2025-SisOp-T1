@@ -130,7 +130,6 @@ int proglist_remove_node_index(struct Program_list* lst, size_t index)
         {
             struct Node* temp = current->next;
 
-            // testar se funciona
             if (temp == lst->tail)
             {
                 lst->tail = current;
@@ -152,6 +151,36 @@ int proglist_remove_node_index(struct Program_list* lst, size_t index)
     }
 
     return 0;
+}
+
+struct Program *proglist_get(struct Program_list* lst, size_t index)
+{
+    struct Program *program = NULL;
+    size_t counter = 0;
+
+    if (lst->size == 0)
+    {
+        return NULL;
+    }
+
+    // if (index == 0)
+    // {
+    //     return lst->head->program;
+    // }
+
+    struct Node* current = lst->head;
+
+    while(current != NULL)
+    {
+        if (counter == index)
+        {
+            return current->program;
+        }
+        counter++;
+        current = current->next;
+    }
+
+    return program;
 }
 
 int proglist_index_of(struct Program_list* lst, size_t program_id)
