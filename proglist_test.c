@@ -24,20 +24,27 @@ int main()
     proglist_add_node(proglist1, &p2);
     proglist_add_node(proglist1, &p3);
     proglist_dump(proglist1);
+    printf("GET PID %lu\n", proglist_get(proglist1,0)->id);
+    printf("GET PID %lu\n", proglist_get(proglist1,1)->id);
+    printf("GET PID %lu\n", proglist_get(proglist1,2)->id);
     printf("tail: %lu\n", proglist1->tail->program->id);
 
     printf("length: %lu\n\n", proglist_len(proglist1));
     proglist_remove_node(proglist1, 2);
+    printf("GET PID %lu\n", proglist_get(proglist1,0)->id);
+    printf("GET PID %lu\n", proglist_get(proglist1,1)->id);
     proglist_dump(proglist1);
     printf("tail: %lu\n", proglist1->tail->program->id);
     printf("length: %lu\n\n", proglist_len(proglist1));
 
     proglist_remove_node(proglist1, 3);
+    printf("GET PID %lu\n", proglist_get(proglist1,0)->id);
     proglist_remove_node(proglist1, 1);
     proglist_dump(proglist1);
     printf("length: %lu\n\n", proglist_len(proglist1));
 
     proglist_add_node(proglist1, &p2);
+    printf("GET PID %lu\n", proglist_get(proglist1,0)->id);
     proglist_dump(proglist1);
     printf("tail: %lu\n", proglist1->tail->program->id);
     printf("length: %lu\n\n", proglist_len(proglist1));
