@@ -191,18 +191,18 @@ void proglist_dump(struct Program_list* lst)
     }
 
     struct Node* current = lst->head;
-    // while (current != NULL)
-    // {
-    //     printf("[\n  id: %lu\n  deadline: %lu\n  instruction_count: %lu\n]\n", current->program->id, current->program->deadline, current->program->instruction_count);
-    //     current = current->next;
-    // }
-
     while (current != NULL)
     {
-        printf("[%lu]->", current->program->id);
+        printf("[\n  id: %lu\n  deadline: %lu\n  instruction_count: %lu\n]\n", current->program->id, current->program->deadline, current->program->instruction_count);
         current = current->next;
     }
-    printf("NULL\n");
+
+    // while (current != NULL)
+    // {
+    //     printf("[%lu]->", current->program->id);
+    //     current = current->next;
+    // }
+    // printf("NULL\n");
 }
 
 void proglist_clear(struct Program_list* lst)

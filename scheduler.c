@@ -20,22 +20,26 @@ void scheduler_setup()
 }
 
 void scheduler_auto(struct Program programs[], size_t program_count)
-{
+{    
     for (size_t i = 0; i < program_count; i++)
     {
         proglist_add_node(creating, &programs[i]);
     }
 }
 
+void test()
+{
+    run_program(creating->head->next->program);
+}
+
 void scheduler_execute_programs()
 {    
-    size_t counter = 0; // contador de unidades de tempo
+    size_t counter = 0; // Time unit counter
 
-    // programa dummy para quando processador estiver em idle
+    // Dummy program
     struct Program dummy;
-    dummy.id = 999;
-    dummy.instruction_count = 999;
     dummy.deadline = 999;
+    dummy.next_deadline = 999;
     dummy.processing_time = 999;
     dummy.time_remaining = 999;
     dummy.arrival_time = 999;
@@ -46,7 +50,7 @@ void scheduler_execute_programs()
     {
         struct Node *it;
 
-        // verifica por processos que nao foram inicializados ainda
+        // Checks for uninitialized programs
         if (creating->size > 0)
         {
             it = creating->head;
@@ -55,18 +59,18 @@ void scheduler_execute_programs()
                 struct Program *i = it->program;
                 if (i->arrival_time == counter)
                 {
-                    printf("Adicionando programa %lu a readyQueue em %lu\n", i->id, counter);
+                    printf("PID %lu added to ready_queue at position %lu.\n", i->id, counter);
                     proglist_add_node(ready_queue, i);
                     proglist_remove_node_index(creating, 0);
                 }
                 it = creating->head;
             }
         }
-
-        // processador em idle
+        
+        // CPU on idle
         if (ready_queue->size <= 0)
         {
-            printf("idle em %lu\n", counter);
+            printf("idle on time %lu.\n", counter);
             if (wait_queue->size > 0)
             {
                 it = wait_queue->head;
@@ -87,25 +91,35 @@ void scheduler_execute_programs()
             continue;
         }
 
-        // seleciona programa com deadline mais proxima em readyQueue
+        // Selects program with the closest deadline on ready_queue
         it = ready_queue->head;
         while (it != NULL)
         {
             struct Program *temp = it->program;
             if (temp->next_deadline < p->next_deadline)
             {
-                printf("Trocando para programa %lu em %lu\n", temp->id, counter);
+                printf("Exchanging to PID %lu on time %lu\n", temp->id, counter);
                 p = temp;
             }
             it = it->next;
         }
 
+        printf("PID %lu: running\n", p->id);
+
         // Runs the program until every syscall (WIP) (PRECISO ARRUMAR AQUI, PROGRAMA NÃO RODA INSTRUĆÕES)
         p->b_running = 1;
         while (p->b_running == 1)
         {
+            if (p == &dummy)
+            {
+                printf("On idle\n");
+                counter++;
+                continue;
+            }
             run_program(p);
         }
+        // Adds the processing_time until the interrupt of the program to the timer counter
+        // (WIP) ACHO QUE AQUI É UM PROBLEMA
         p->time_remaining -= p->processing_time;
         counter += p->processing_time;
 
@@ -119,15 +133,15 @@ void scheduler_execute_programs()
         // Deadline lost
         if (p->next_deadline == counter && p->time_remaining > 0)
         {
-            printf("Deadline de programa %lu perdida em %lu\n", p->id, counter);
+            printf("PID %lu deadline lost on time %lu.\n", p->id, counter);
             p->next_deadline = counter + p->deadline;
             p->time_remaining = p->processing_time;
         }
 
-        // Deadline satisfeita
+        // Deadline met
         if (p->time_remaining <= 0)
         {
-            printf("Deadline de programa %lu satisfeita em %lu\n", p->id, counter);
+            printf("PID %lu deadline met on time %lu.\n", p->id, counter);
             proglist_remove_node(ready_queue, p->id);
             proglist_add_node(wait_queue, p);
 
@@ -135,7 +149,7 @@ void scheduler_execute_programs()
             if (ready_queue->size > 0)
             {
                 p = ready_queue->head->program;
-                printf("Trocando para programa %lu em %lu\n", p->id, counter);
+                printf("Exchanging to PID %lu on time %lu\n", p->id, counter);
             }
             else
             {
@@ -143,7 +157,7 @@ void scheduler_execute_programs()
             }
         }
 
-        // verifica por programas da wait_queue que devem voltar para ready_queue
+        // Checks for wait_queue programs that should get back in the ready_queue
         if (wait_queue->size > 0)
         {
             it = wait_queue->head;
@@ -162,23 +176,23 @@ void scheduler_execute_programs()
     }
 }
 
-// lista programas existentes na ready_queue
+// Prints existing programs on ready_queue
 void scheduler_print_ready_queue()
 {
-    printf("Programas na lista de prontos para execução:");
+    printf("Programs on ready queue list:");
     proglist_dump(ready_queue);
 }
 
-// lista programas existentes na wait_queue
+// Prints existing programs on wait_queue
 void scheduler_print_wait_queue()
 {
-    printf("Programas na lista de espera:\n");
+    printf("Programs on wait queue list:\n");
     proglist_dump(wait_queue);
 }
 
-// lista programas existentes na creating
+// Prints existing programs on creating
 void scheduler_print_creating()
 {
-    printf("Programas na creating:\n");
+    printf("Programas on creating list:\n");
     proglist_dump(creating);
 }

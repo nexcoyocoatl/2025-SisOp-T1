@@ -214,7 +214,7 @@ void read_code( struct Program *program, char *instruction )
             {
                 if (strcmp(variable, program->variables[i].name) == 0)
                 {
-                    variable_pointer = &(program->variables[i]); /// PROBLEM?!
+                    variable_pointer = &(program->variables[i]);
                     break;
                 }
             }
@@ -486,8 +486,9 @@ int run_program( struct Program *program )
     int b_program_stop = 0;
     size_t i = 0;
 
-    printf("instruction count = %lu\n", program->instruction_count);
-    printf("variable count = %lu\n", program->variable_count);
+    printf("PID %lu: Instruction count = %lu\n", program->id, program->instruction_count);
+    printf("PID %lu: Variable count = %lu\n", program->id, program->variable_count);
+
 
     // Program stops after every syscall, and will have to be given permission by the scheduler to run again
     while ( program->b_running )
@@ -497,11 +498,11 @@ int run_program( struct Program *program )
 
         if (program_instruction->type == IMMEDIATE)
         {
-            printf("%lu: instruction %lu: OPCODE %d-%d", i, program_pc, program_instruction->operation, program_instruction->immediate);    
+            printf("PID %lu: counter %lu, instruction %lu: OPCODE %d-%d", program->id, i, program_pc, program_instruction->operation, program_instruction->immediate);    
         }
         else
         {
-            printf("%lu: instruction %lu: OPCODE %d - %s", i, program_pc, program_instruction->operation, program_instruction->var_pointer->name);
+            printf("PID %lu: counter %lu, instruction %lu: OPCODE %d - %s", program->id, i, program_pc, program_instruction->operation, program_instruction->var_pointer->name);
         }
 
         if (program->instructions[program->pc].operation > 5)
@@ -513,7 +514,7 @@ int run_program( struct Program *program )
         
         if (program_instruction->operation <= 5)
         {
-            printf(" -> ");
+            printf(" | Variables: ");
             for (size_t j = 0; j < program->variable_count; j++)
             {
                 printf("%s = %d", program->variables[j].name, program->variables[j].value);
@@ -526,12 +527,6 @@ int run_program( struct Program *program )
             printf("\n");
         }
 
-        // if ( program_instruction->operation == 10 && program_instruction->immediate == 0 )
-        // {
-        //     program->b_running = 0;
-        //     b_program_end = 1;
-        //     break;
-        // }
         if ( program_instruction->operation == 10 ) // Interrupt, will be resumed if it has an early deadline
         {
             program->b_running = 0;
@@ -547,6 +542,7 @@ int run_program( struct Program *program )
         i++;
     }
 
+    printf("PID %lu: Variables: ", program->id);
     for (size_t j = 0; j < program->variable_count; j++)
     {
         printf("%s = %d", program->variables[j].name, program->variables[j].value);
@@ -560,15 +556,18 @@ int run_program( struct Program *program )
 
     if (!program->b_running)
     {
-        printf("Program %lu halted at instruction %lu/%lu\n--------------------------------------\n",
+        printf("PID %lu: halted at instruction %lu/%lu\n",
             program->id, program->pc, program->instruction_count);
     }
 
     if (program->b_finished == 1)
     {
+        printf("PID %lu: finished\n", program->id);
         program->pc = 0;
         program->acc = 0;
     }
+
+    printf("--------------------------------------\n");
     
     return 1;
 }
@@ -602,7 +601,7 @@ int calculate_deadline( struct Program *program )
     return 1;
 }
 
-int program_setup( struct Program *program, FILE* fileptr, size_t processing_time, int auto_user_input )
+int program_setup( struct Program *program, FILE* fileptr, size_t processing_time, size_t arrival_time, int auto_user_input )
 {
     program->id = program_id_count;
     branches = malloc( sizeof(struct Branch) * 256 );
@@ -620,6 +619,7 @@ int program_setup( struct Program *program, FILE* fileptr, size_t processing_tim
     program->pc = 0;
     program->processing_time = processing_time;
     program->auto_user_input = auto_user_input;
+    program->arrival_time = arrival_time;
 
     read_instructions(program, fileptr);
 

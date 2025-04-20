@@ -132,6 +132,6 @@ int run_program( struct Program *program );
 int calculate_deadline( struct Program *program );
 
 // Main only opens one file and stores one program for now
-int program_setup( struct Program *program, FILE* fileptr, size_t processing_time, int auto_user_input );
+int program_setup( struct Program *program, FILE* fileptr, size_t processing_time, size_t arrival_time, int auto_user_input );
 
 #endif

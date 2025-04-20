@@ -15,4 +15,6 @@ void scheduler_print_wait_queue();
 
 void scheduler_print_creating();
 
+void test();
+
 #endif
