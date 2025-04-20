@@ -100,19 +100,9 @@ void brneg( struct Program *program, int op1 )
 
 void syscall( struct Program *program, int index )
 {
-    switch (index)
+    if (index == 2) // Other cases are passed for the scheduler to process
     {
-        case 0:
-            break;
-        case 1:
-            printf("PID %lu: prints %d\n", program->id, program->acc);
-            break;
-        case 2:
-            printf("PID %lu: user types %d\n", program->id, program->auto_user_input);
-            program->acc = program->auto_user_input;
-            break;
-        default:
-            printf("Unknown system call, halting program %lu\n--------------------------------------\n", program->id);
+        program->acc = program->auto_user_input;
     }
 }
 
@@ -529,13 +519,25 @@ int run_program( struct Program *program )
 
         if ( program_instruction->operation == 10 ) // Interrupt, will be resumed if it has an early deadline
         {
+            switch (program_instruction->immediate)
+            {
+                case 0:
+                    program->b_finished = 1;
+                    break;
+                case 1:
+                    printf("PID %lu: prints %d\n", program->id, program->acc);
+                    break;
+                case 2:
+                    printf("PID %lu: user types %d\n", program->id, program->auto_user_input);
+                    break;
+                default:
+                    printf("Unknown system call, exiting program %lu\n--------------------------------------\n", program->id);
+                    program->b_finished = 1;
+                    break;
+            }
+
             program->b_running = 0;
             b_program_stop = 1;
-
-            if (program_instruction->immediate == 0)
-            {
-                program->b_finished = 1;
-            }
         }
 
         program->pc++;

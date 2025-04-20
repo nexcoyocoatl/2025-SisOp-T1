@@ -1,7 +1,5 @@
 #include "scheduler.h"
 #include "program_linkedlist.h"
-
-#include <bits/types/cookie_io_functions_t.h>
 #include <stdio.h>
 
 struct Program_list* ready_queue;
@@ -131,7 +129,7 @@ void scheduler_execute_programs()
         }
 
         // Deadline lost
-        if (p->next_deadline == counter && p->time_remaining > 0)
+        if (p->next_deadline <= counter && p->time_remaining > 0)
         {
             printf("PID %lu deadline lost on time %lu.\n", p->id, counter);
             p->next_deadline = counter + p->deadline;
@@ -171,6 +169,7 @@ void scheduler_execute_programs()
                     proglist_add_node(ready_queue, i);
                     proglist_remove_node_index(wait_queue, 0);
                 }
+                it = it->next;
             }
         }
     }

@@ -72,8 +72,18 @@ int read_file(char* filepath)
 
     // struct User_input user_input = ask_user_input(program_count); // ASSIM NÃO
     // program_setup(&programs[program_count], fileptr, user_input.processing_time, user_input.arrival_time, user_input.auto_user_input);
-    program_count++;
+    
 
+
+    // if (program_count == 0)
+    // {
+    //     program_setup(&programs[program_count], fileptr, 3, 5)
+    // }
+
+
+
+
+    program_count++;
     fclose(fileptr);
 
     return 0;
