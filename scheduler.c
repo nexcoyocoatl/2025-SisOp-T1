@@ -1,4 +1,5 @@
 #include "scheduler.h"
+#include "program.h"
 #include "program_linkedlist.h"
 #include <stdio.h>
 
@@ -82,7 +83,7 @@ void scheduler_execute_programs()
                         proglist_add_node(ready_queue, i);
                         proglist_remove_node_index(wait_queue, 0);
                     }
-                    it = it->next;
+                    it = it->next; // (WIP) vai dar problema
                 }
             }
             counter++;
@@ -159,17 +160,16 @@ void scheduler_execute_programs()
         if (wait_queue->size > 0)
         {
             it = wait_queue->head;
-            while (it != NULL)
+            struct Program *i = it->program;
+            while (it != NULL && (counter >= i->next_deadline))
             {
-                struct Program *i = it->program;
-                if (counter >= i->next_deadline)
-                {
-                    i->next_deadline = counter + i->deadline;
-                    i->time_remaining = i->processing_time;
-                    proglist_add_node(ready_queue, i);
-                    proglist_remove_node_index(wait_queue, 0);
-                }
-                it = it->next;
+                i = it->program;
+                i->next_deadline = counter + i->deadline;
+                i->time_remaining = i->processing_time;
+                proglist_add_node(ready_queue, i);
+                proglist_remove_node_index(wait_queue, 0);
+                proglist_dump(wait_queue);
+                it = wait_queue->head;
             }
         }
     }

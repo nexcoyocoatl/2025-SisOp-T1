@@ -102,7 +102,7 @@ void syscall( struct Program *program, int index )
 {
     if (index == 2) // Other cases are passed for the scheduler to process
     {
-        program->acc = program->auto_user_input;
+        program->acc = 3; // HARDCODED
     }
 }
 
@@ -603,7 +603,7 @@ int calculate_deadline( struct Program *program )
     return 1;
 }
 
-int program_setup( struct Program *program, FILE* fileptr, size_t processing_time, size_t arrival_time, int auto_user_input )
+int program_setup( struct Program *program, FILE* fileptr, size_t processing_time, size_t arrival_time, size_t deadline )
 {
     program->id = program_id_count;
     branches = malloc( sizeof(struct Branch) * 256 );
@@ -620,7 +620,7 @@ int program_setup( struct Program *program, FILE* fileptr, size_t processing_tim
     program->acc = 0;
     program->pc = 0;
     program->processing_time = processing_time;
-    program->auto_user_input = auto_user_input;
+    program->deadline = deadline;
     program->arrival_time = arrival_time;
 
     read_instructions(program, fileptr);
@@ -657,7 +657,7 @@ int program_setup( struct Program *program, FILE* fileptr, size_t processing_tim
     free(branches);
     free(labels);
 
-    calculate_deadline(program);
+    // calculate_deadline(program);
 
     program_id_count++;
 

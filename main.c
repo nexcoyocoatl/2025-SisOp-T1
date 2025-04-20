@@ -68,7 +68,20 @@ int read_file(char* filepath)
     }
 
     //(WIP)
-    program_setup(&programs[program_count], fileptr, 3, 0, 3); // ASSIM FUNCIONA
+    // program_setup(&programs[program_count], fileptr, 3, 0, 3); // ASSIM FUNCIONA
+
+    switch (program_count)
+    {
+        case 0:
+            program_setup(&programs[program_count], fileptr, 3, 0, 3);
+            break;
+        case 1:
+            program_setup(&programs[program_count], fileptr, 3, 0, 9);
+            break;
+        case 2:
+            program_setup(&programs[program_count], fileptr, 3, 0, 18);
+            break;
+    }
 
     // struct User_input user_input = ask_user_input(program_count); // ASSIM NÃO
     // program_setup(&programs[program_count], fileptr, user_input.processing_time, user_input.arrival_time, user_input.auto_user_input);
