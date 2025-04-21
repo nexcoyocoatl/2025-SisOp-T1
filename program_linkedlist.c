@@ -153,7 +153,7 @@ int proglist_remove_node_index(struct Program_list* lst, size_t index)
     return 0;
 }
 
-struct Program *proglist_get(struct Program_list* lst, size_t index)
+struct Program *proglist_get_program(struct Program_list* lst, size_t index)
 {
     if (lst->size == 0) return NULL;
         
@@ -163,14 +163,32 @@ struct Program *proglist_get(struct Program_list* lst, size_t index)
     while(current != NULL)
     {
         if (counter == index) {
-            //printf("get returning pid %lu\n", current->program->id);
             return current->program;
         }
         counter++;
         current = current->next;
     }
 
-    //printf("get null\n");
+    return NULL;
+}
+
+struct Node *proglist_get_node(struct Program_list* lst, size_t index)
+{
+    if (lst->size == 0) return NULL;
+        
+    struct Node* current = lst->head;
+    size_t counter = 0;
+
+    while(current != NULL)
+    {
+        if (counter == index)
+        {
+            return current;
+        }
+        counter++;
+        current = current->next;
+    }
+
     return NULL;
 }
 
@@ -213,16 +231,10 @@ void proglist_dump(struct Program_list* lst)
     struct Node* current = lst->head;
     while (current != NULL)
     {
-        printf("[\n  id: %lu\n  deadline: %lu\n  instruction_count: %lu\n]\n", current->program->id, current->program->deadline, current->program->instruction_count);
+        printf("[\n  id: %lu\n  deadline: %lu\n  instruction_count: %lu\n]\n",
+            current->program->id, current->program->deadline, current->program->instruction_count);
         current = current->next;
     }
-
-    // while (current != NULL)
-    // {
-    //     printf("[%lu]->", current->program->id);
-    //     current = current->next;
-    // }
-    // printf("NULL\n");
 }
 
 void proglist_clear(struct Program_list* lst)

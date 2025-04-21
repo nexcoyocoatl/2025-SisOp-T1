@@ -102,7 +102,7 @@ void syscall( struct Program *program, int index )
 {
     if (index == 2) // Other cases are passed for the scheduler to process
     {
-        program->acc = 3; // HARDCODED
+        program->acc = 3; // HARDCODED TO ELIMINATE INDETERMINISM
     }
 }
 
@@ -119,6 +119,7 @@ void read_code( struct Program *program, char *instruction )
     int b_immediate = 0;
     int b_label = 0;
 
+    // Separates instruction into tokens
     if (instruction[strlen(instruction) - 1] == ':')
     {
         b_label = 1;
@@ -180,6 +181,7 @@ void read_code( struct Program *program, char *instruction )
             temp_instruction.immediate = value;
         }
 
+        // Is Syscall
         else if (opcode == 10)
         {
             temp_instruction.type = IMMEDIATE;
@@ -197,6 +199,7 @@ void read_code( struct Program *program, char *instruction )
             temp_instruction.type = IMMEDIATE;
         }
 
+        // Is Load, Store or Arithmetic Operation
         else
         {            
             struct Variable *variable_pointer = NULL;
@@ -236,6 +239,7 @@ void read_data( struct Program *program, char *instruction)
     char variable_name[128];
     int value = -1;
 
+    // Separates data line into tokens
     if ( (temp = strtok(instruction, delim)) != NULL )
     {        
         for (int i = 0; temp[i] != '\0'; i++)
@@ -296,6 +300,7 @@ void read_instructions( struct Program *program, FILE *fileptr )
         }
         end[1] = '\0';
 
+        // Finds end of Code and Data
         if (strcmp( instruction, ".endcode") == 0)
         {
             b_code = 0;
@@ -308,6 +313,7 @@ void read_instructions( struct Program *program, FILE *fileptr )
             continue;
         }
 
+        // Sends to temporary code array to be read later
         if (b_code == 1)
         {
             strcpy(temp_code[temp_code_i], instruction);
@@ -359,7 +365,7 @@ void read_instructions( struct Program *program, FILE *fileptr )
     }
 }
 
-// Execute one program instruction based on its program counter
+// Executes one program instruction based on its program counter
 int execute_instruction( struct Program *program )
 {
     struct Instruction *instruction = &program->instructions[program->pc];
@@ -476,9 +482,11 @@ int run_program( struct Program *program )
     int b_program_stop = 0;
     size_t i = 0;
 
-    //printf("PID %lu: Instruction count = %lu\n", program->id, program->instruction_count);
-    //printf("PID %lu: Variable count = %lu\n", program->id, program->variable_count);
-
+    if (program->b_debug >= 2)
+    {
+        printf("PID %lu: Instruction count = %lu\n", program->id, program->instruction_count);
+        printf("PID %lu: Variable count = %lu\n", program->id, program->variable_count);
+    }
 
     // Program stops after every syscall, and will have to be given permission by the scheduler to run again
     while ( program->b_running )
@@ -486,38 +494,47 @@ int run_program( struct Program *program )
         size_t program_pc = program->pc;
         struct Instruction *program_instruction = &program->instructions[program_pc];
 
-        if (program_instruction->type == IMMEDIATE)
-        {
-            //printf("PID %lu: counter %lu, instruction %lu: OPCODE %d-%d", program->id, i, program_pc, program_instruction->operation, program_instruction->immediate);    
-        }
-        else
-        {
-            //printf("PID %lu: counter %lu, instruction %lu: OPCODE %d - %s", program->id, i, program_pc, program_instruction->operation, program_instruction->var_pointer->name);
+
+        if (program->b_debug >= 1)
+        {            
+            if (program_instruction->type == IMMEDIATE)
+            {
+                printf("PID %lu: counter %lu, instruction %lu: OPCODE %d-%d", program->id, i, program_pc, program_instruction->operation, program_instruction->immediate);    
+            }
+            else
+            {
+                printf("PID %lu: counter %lu, instruction %lu: OPCODE %d - %s", program->id, i, program_pc, program_instruction->operation, program_instruction->var_pointer->name);
+            }
         }
 
-        if (program->instructions[program->pc].operation > 5)
+        // Calls instruction to be executed by itś OPCODE
+        execute_instruction(program);
+        
+        // Prints variables after each instruction to check what has changed
+
+        if (program->b_debug >= 2)
+        {
+            if (program_instruction->operation <= 5)
+            {
+                printf(" | Variables: ");
+                for (size_t j = 0; j < program->variable_count; j++)
+                {
+                    printf("%s = %d", program->variables[j].name, program->variables[j].value);
+
+                    if (j != program->variable_count-1)
+                    {
+                        printf(", ");
+                    }
+                }
+            }
+        }
+        if (program->b_debug >= 1)
         {
             printf("\n");
         }
 
-        execute_instruction(program);
-        
-        if (program_instruction->operation <= 5)
-        {
-            //printf(" | Variables: ");
-            for (size_t j = 0; j < program->variable_count; j++)
-            {
-                //printf("%s = %d", program->variables[j].name, program->variables[j].value);
-
-                if (j != program->variable_count-1)
-                {
-                    //printf(", ");
-                }
-            }
-            //printf("\n");
-        }
-
-        if ( program_instruction->operation == 10 ) // Interrupt, will be resumed if it has an early deadline
+        // Prints interrupts and locks the program. Will be resumed instantly if it has an early deadline
+        if ( program_instruction->operation == 10 )
         {
             switch (program_instruction->immediate)
             {
@@ -525,13 +542,23 @@ int run_program( struct Program *program )
                     program->b_finished = 1;
                     break;
                 case 1:
-                    printf("PID %lu: prints %d\n", program->id, program->acc);
+                    if (program->b_debug >= 2)
+                    {                    
+                        printf("PID %lu: prints %d\n", program->id, program->acc);
+                    }
                     break;
                 case 2:
-                    printf("PID %lu: user types %d\n", program->id, program->auto_user_input);
+                    
+                    if (program->b_debug >= 2)
+                    {
+                        printf("PID %lu: user types %d\n", program->id, program->auto_user_input);
+                    }
                     break;
                 default:
-                    printf("Unknown system call, exiting program %lu\n--------------------------------------\n", program->id);
+                    if (program->b_debug >= 1)
+                    {
+                        printf("Unknown system call, exiting program %lu\n--------------------------------------\n", program->id);
+                    }
                     program->b_finished = 1;
                     break;
             }
@@ -544,37 +571,44 @@ int run_program( struct Program *program )
         i++;
     }
 
-    //printf("PID %lu: Variables: ", program->id);
-    for (size_t j = 0; j < program->variable_count; j++)
+    // After the program ends, will print all variables
+    if (program->b_debug >= 2)
     {
-        //printf("%s = %d", program->variables[j].name, program->variables[j].value);
-
-        if (j != program->variable_count-1)
+        printf("PID %lu: Variables: ", program->id);
+        for (size_t j = 0; j < program->variable_count; j++)
         {
-            //printf(", ");
-        }
-    }
-    //printf("\n");
+            printf("%s = %d", program->variables[j].name, program->variables[j].value);
 
-    if (!program->b_running)
-    {
-        printf("PID %lu: halted at instruction %lu/%lu\n",
-            program->id, program->pc, program->instruction_count);
+            if (j != program->variable_count-1)
+            {
+                printf(", ");
+            }
+        }
+        printf("\n");
+
+        if (!program->b_running)
+        {
+            printf("PID %lu: halted at instruction %lu/%lu\n",
+                program->id, program->pc, program->instruction_count);
+        }
+
+        if (program->b_finished == 1)
+        {
+            printf("PID %lu: finished\n", program->id);
+        }
     }
 
     if (program->b_finished == 1)
     {
-        printf("PID %lu: finished\n", program->id);
         program->pc = 0;
         program->acc = 0;
     }
-
-    printf("--------------------------------------\n");
     
     return 1;
 }
 
-int calculate_deadline( struct Program *program )
+// Calculates the program deadline based on its processing time and number of interrupts
+int calculate_real_deadline( struct Program *program )
 {
     program->pc = 0;
     program->acc = 0;
@@ -597,14 +631,16 @@ int calculate_deadline( struct Program *program )
     program->pc = 0;
     program->acc = 0;
 
-    program->deadline = syscall_count * program->processing_time;
-    //printf("PID %lu: syscall count = %lu, deadline = %lu\n", program->id, syscall_count, program->deadline);
+    program->real_deadline = syscall_count * program->processing_time;
 
     return 1;
 }
 
-int program_setup( struct Program *program, FILE* fileptr, size_t processing_time, size_t arrival_time, size_t deadline )
+// Reads the received lines from a text file and calls the relevant functions to create instructions of a program
+int program_setup( struct Program *program, FILE* fileptr, int debug, size_t arrival_time, size_t processing_time, size_t deadline )
 {
+    program->b_debug = debug;
+
     program->id = program_id_count;
     branches = malloc( sizeof(struct Branch) * 256 );
     labels = malloc(sizeof(struct Label) * 256);
@@ -620,44 +656,17 @@ int program_setup( struct Program *program, FILE* fileptr, size_t processing_tim
     program->acc = 0;
     program->pc = 0;
     program->processing_time = processing_time;
+    program->time_remaining = deadline;
     program->deadline = deadline;
     program->arrival_time = arrival_time;
 
     read_instructions(program, fileptr);
 
-    // Test: Prints all variables and instructions on virtual memory
-    // printf("Data:\n");
-    // for (size_t i = 0; i < program->variable_count; i++)
-    // {
-    //     printf(" %lu: %s = %d\n", i, program->variables[i].name, program->variables[i].value);
-    // }
-    // printf("Code Instructions:\n");
-    // for (size_t i = 0; i < program->instruction_count; i++)
-    // {
-    //     printf(" %lu: OPCODE %d: %s%s%d\n",
-    //                     i,
-    //                     program->instructions[i].operation,
-    //                     program->instructions[i].type==IMMEDIATE? "" : program->instructions[i].var_pointer->name,
-    //                     program->instructions[i].type==IMMEDIATE? "" : " = ",
-    //                     program->instructions[i].type==IMMEDIATE? program->instructions[i].immediate : program->instructions[i].var_pointer->value
-    //                 );
-    // }
-    // printf("Labels:\n");
-    // for (size_t i = 0; i < label_count; i++)
-    // {
-    //     printf(" %lu: Label %s - line %d\n", i, labels[i].name, labels[i].line_num);
-    // }
-    //
-    // printf("Branches:\n");
-    // for (size_t i = 0; i < branch_count; i++)
-    // {
-    //     printf(" %lu: Branch %s - instruction %lu\n", i, branches[i].label_name, branches[i].instruction_num);
-    // }
-
     free(branches);
     free(labels);
 
-    // calculate_deadline(program);
+    // Calculates real deadline (processing_time * number_of_syscalls) (NOT USED)
+    calculate_real_deadline(program);
 
     program_id_count++;
 

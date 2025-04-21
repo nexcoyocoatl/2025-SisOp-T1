@@ -73,14 +73,16 @@ struct Program {
 
     size_t deadline;
     size_t next_deadline;
+    size_t real_deadline;
     size_t processing_time;
-    size_t time_remaining;
+    int time_remaining;
     size_t arrival_time;
     int auto_user_input;
 
     size_t syscall_time;
     size_t syscall_count;
 
+    int b_debug;
     int b_running;
     int b_finished;
 
@@ -125,13 +127,16 @@ void read_data( struct Program *program, char *instruction);
 // Reads line of instructions, one by one, calling the respective function for its type
 void read_instructions( struct Program *program, FILE *fileptr );
 
+// Executes one program instruction based on its program counter
 int execute_instruction( struct Program *program );
 
+// Runs the program, executes and prints every instruction and then increments its PC
 int run_program( struct Program *program );
 
-int calculate_deadline( struct Program *program );
+// Calculates the program deadline based on its processing time and number of interrupts
+int calculate_real_deadline( struct Program *program );
 
-// Main only opens one file and stores one program for now
-int program_setup( struct Program *program, FILE* fileptr, size_t processing_time, size_t arrival_time, size_t deadline );
+// Reads the received lines from a text file and calls the relevant functions to create instructions of a program
+int program_setup( struct Program *program, FILE* fileptr, int debug, size_t arrival_time, size_t processing_time, size_t deadline );
 
 #endif
