@@ -153,11 +153,6 @@ void scheduler_execute_programs()
             }
         }
 
-        if (p != NULL)
-        {
-            printf("DEADLINE TIME REMAINING: %d\n", p->deadline_time_remaining);
-        }
-
         // Deadline lost
         if (p != NULL && p->deadline_time_remaining > 0)
         {
