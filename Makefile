@@ -14,6 +14,3 @@ $(BIN): $(OBJ)
 
 clean:
 	-@ rm -f $(OBJ) $(BIN)
-
-proglist_test:
-	$(CC) $(DBGFLAGS) proglist_test.c program_linkedlist.c program.c -o proglist_test
