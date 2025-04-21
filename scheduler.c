@@ -5,81 +5,62 @@
 
 struct Program_list* ready_queue;
 struct Program_list* wait_queue;
-struct Program_list* creating;
+struct Program_list* arrival_queue;
 
-// cria pseudoprogramas com base no exemplo dos slides de escalonamento
-// https://moodle.pucrs.br/pluginfile.php/4882481/mod_resource/content/4/escalonamento.pdf
-// pag 24
-
-void scheduler_setup()
+void scheduler_setup(struct Program programs[], size_t program_count)
 {
     ready_queue = proglist_create();
     wait_queue = proglist_create();
-    creating = proglist_create();
-}
+    arrival_queue = proglist_create();
 
-void scheduler_auto(struct Program programs[], size_t program_count)
-{    
     for (size_t i = 0; i < program_count; i++)
     {
-        proglist_add_node(creating, &programs[i]);
+        proglist_add_node(arrival_queue, &programs[i]);
     }
 }
 
-void test()
-{
-    run_program(creating->head->next->program);
-}
-
 void scheduler_execute_programs()
-{    
+{
+    // Flags to print messages
+    int b_end_line = 0;
+    int b_program_swapped = 0;
     size_t counter = 0; // Time unit counter
-
-    // Dummy program
-    struct Program dummy;
-    dummy.deadline = 999;
-    dummy.next_deadline = 999;
-    dummy.processing_time = 999;
-    dummy.time_remaining = 999;
-    dummy.arrival_time = 999;
     
-    struct Program *p = &dummy;
+    struct Program *p = NULL;
     
-    while (ready_queue->size > 0 || wait_queue->size > 0 || creating->size > 0 )
+    // While there are still programs in any queue
+    while (ready_queue->size > 0 || wait_queue->size > 0 || arrival_queue->size > 0 )
     {
         struct Node *it;
         
-        // Checks for uninitialized programs
-        if (creating->size > 0)
+        // Checks for uninitialized programs that will arrive
+        if (arrival_queue->size > 0)
         {
-            struct Program *ti = proglist_get(creating, 0);
+            struct Program *p_it = proglist_get_program(arrival_queue, 0);
             size_t index = 0;
             struct Program *i;
-            while (ti != NULL)
+            while (p_it != NULL)
             {
-                // printf("----------------\n");
-                i = ti;
+                i = p_it;
                 if (counter >= i->arrival_time)
                 {
-                    printf("PID %lu added to ready_queue from creating at time %lu.\n", i->id, counter);
-                    i = ti;
+                    printf("PID %lu added to ready_queue from arrival_queue at time %lu. arrival = %lu, t = %lu, deadline = %lu\n",
+                                i->id, counter, i->arrival_time, i->processing_time, i->deadline);
+                    i = p_it;
                     i->next_deadline = counter + i->deadline;
-                    i->time_remaining = i->processing_time;
                     proglist_add_node(ready_queue, i);
-                    proglist_remove_node_index(creating, index);
+                    proglist_remove_node_index(arrival_queue, index);
                     index--;
-                } else {
-                    printf("Skipping creating PID %lu: time %d, arrival %lu\n", i->id, counter, i->arrival_time);
                 }
-                //printf("incrementing index: ");
+                else
+                {
+                    printf("Skipping arrival_queue PID %lu: time %lu, arrival %lu\n", i->id, counter, i->arrival_time);
+                }
                 index++;
-                //printf("%d\n",index);
-                ti = proglist_get(creating, index);
-                //proglist_dump(creating);
+                p_it = proglist_get_program(arrival_queue, index);
             }
+            printf("--------------------------------------\n");
         }
-        
-        // exit(0); // só para testar a primeira execucao de creating
         
         // CPU on idle
         if (ready_queue->size <= 0)
@@ -97,86 +78,102 @@ void scheduler_execute_programs()
                     if (counter >= i->next_deadline) {
                         i = it->program;
                         i->next_deadline = counter + i->deadline;
-                        i->time_remaining = i->processing_time;
                         proglist_add_node(ready_queue, i);
                         proglist_remove_node_index(wait_queue, index);
-                        proglist_dump(wait_queue);
                         index--;
                     }
                     index++;
-                    it = proglist_get(wait_queue, index);
+                    it = proglist_get_node(wait_queue, index);
                 }
             }
-
             counter++;
             continue;
         }
 
         // Selects program with the closest deadline on ready_queue
-        it = ready_queue->head;
-        while (it != NULL)
         {
-            struct Program *temp = it->program;
-            if (temp->next_deadline < p->next_deadline)
+            // Adds the first on ready_queue if there is no program running
+            it = ready_queue->head;
+            if (p == NULL)
             {
-                printf("Exchanging to PID %lu on time %lu\n", temp->id, counter);
-                p = temp;
+                p = it->program;
+                b_program_swapped = 1;
+                it = it->next;
             }
-            it = it->next;
+            // Checks if there's one with an earlier deadline to be run first
+            while (it != NULL)
+            {
+                struct Program *temp = it->program;
+                if (temp->next_deadline < p->next_deadline)
+                {
+                    p = temp;
+                    b_program_swapped = 1;
+                }
+                it = it->next;
+            }
+
+            // If the flag is on, there was a swap, so print the one that was swapped to
+            if (b_program_swapped)
+            {
+                printf("Swapping to PID %lu on time %lu\n", p->id, counter);
+                b_program_swapped = 0;
+            }
         }
 
         printf("PID %lu: running\n", p->id);
 
-        // Runs the program until every syscall (WIP) (PRECISO ARRUMAR AQUI, PROGRAMA NÃO RODA INSTRUĆÕES)
-        if (p != &dummy)
+        // Runs the program until every syscall
+        if (p != NULL)
         {
             p->b_running = 1;
             while (p->b_running == 1)
             {
                 run_program(p);
             }
-            // Adds the processing_time until the interrupt of the program to the timer counter
-            // (WIP) ACHO QUE AQUI É UM PROBLEMA
-            p->time_remaining -= p->processing_time;
+            p->time_remaining -= (int)p->processing_time;
             counter += p->processing_time;
-        }
 
-        // Program finished
-        if (p->b_finished)
-        {
-            proglist_remove_node(ready_queue, p->id);
-            p = &dummy;
+            // Program has finished and is then removed from all queues
+            if (p->b_finished)
+            {
+                b_end_line = 1;
+                proglist_remove_node(ready_queue, p->id);
+                p = NULL;
+            }
         }
 
         // Deadline lost
-        if (p->next_deadline <= counter && p->time_remaining > 0)
+        if (p != NULL && p->next_deadline <= counter && p->time_remaining > 0)
         {
-            printf("PID %lu deadline lost on time %lu.\n", p->id, counter);
+            b_end_line = 1;
+            printf("PID %lu: deadline missed on time %lu.\n", p->id, counter);
             p->next_deadline = counter + p->deadline;
             p->time_remaining = p->processing_time;
         }
 
         // Deadline met
-        if (p->time_remaining <= 0)
+        if (p != NULL && p->time_remaining <= 0)
         {
-            printf("PID %lu deadline met on time %lu.\n", p->id, counter);
+            b_end_line = 1;
+            printf("PID %lu: deadline met on time %lu.\n", p->id, counter);
             proglist_remove_node(ready_queue, p->id);
             proglist_add_node(wait_queue, p);
 
-            // troca para outro programa
-            if (ready_queue->size > 0)
-            {
-                p = ready_queue->head->program;
-                printf("Exchanging to PID %lu on time %lu\n", p->id, counter);
-            }
-            else
-            {
-                p = &dummy;
-            }
-        }        
+            p = NULL;                
+        }
+
+        // Prints a line when program ends or is interrupted
+        if (b_end_line)
+        {
+            printf("--------------------------------------\n");
+        }
     }
+    proglist_clear(ready_queue);
+    proglist_clear(wait_queue);
+    proglist_clear(arrival_queue);
 }
 
+// Test functions
 // Prints existing programs on ready_queue
 void scheduler_print_ready_queue()
 {
@@ -191,9 +188,9 @@ void scheduler_print_wait_queue()
     proglist_dump(wait_queue);
 }
 
-// Prints existing programs on creating
-void scheduler_print_creating()
+// Prints existing programs on arrival_queue
+void scheduler_print_arrival_queue()
 {
-    printf("Programas on creating list:\n");
-    proglist_dump(creating);
+    printf("Programs on arrival_queue list:\n");
+    proglist_dump(arrival_queue);
 }
