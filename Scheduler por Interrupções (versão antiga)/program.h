@@ -72,11 +72,10 @@ struct Program {
     int acc;
 
     size_t deadline;
-    int deadline_time_remaining;
     size_t next_deadline;
     size_t real_deadline;
     size_t processing_time;
-    int processing_time_remaining;
+    int time_remaining;
     size_t arrival_time;
     int auto_user_input;
 
@@ -89,8 +88,7 @@ struct Program {
 
     // Counters
     size_t variable_count; // Counter for number of variables in data
-    size_t instruction_count; // "Virtual" memory for instructions
-    size_t instructions_executed;
+    size_t instruction_count; // "Virtual" memory for instructions (maybe refactor?)
 
     // "Virtual" Memory
     struct Instruction instructions[512];
@@ -131,8 +129,6 @@ void read_instructions( struct Program *program, FILE *fileptr );
 
 // Executes one program instruction based on its program counter
 int execute_instruction( struct Program *program );
-
-int run_one_instruction( struct Program *program );
 
 // Runs the program, executes and prints every instruction and then increments its PC
 int run_program( struct Program *program );

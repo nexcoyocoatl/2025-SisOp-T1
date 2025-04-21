@@ -23,10 +23,10 @@ void scheduler_execute_programs()
 {
     // Flags to print messages
     int b_end_line = 0;
+    int b_program_swapped = 0;
     size_t counter = 0; // Time unit counter
     
     struct Program *p = NULL;
-    struct Program *last_p = NULL;
     
     // While there are still programs in any queue
     while (ready_queue->size > 0 || wait_queue->size > 0 || arrival_queue->size > 0 )
@@ -48,7 +48,6 @@ void scheduler_execute_programs()
                                 i->id, counter, i->arrival_time, i->processing_time, i->deadline);
                     i = p_it;
                     i->next_deadline = counter + i->deadline;
-                    i->processing_time_remaining = (int)i->processing_time;
                     proglist_add_node(ready_queue, i);
                     proglist_remove_node_index(arrival_queue, index);
                     index--;
@@ -79,7 +78,6 @@ void scheduler_execute_programs()
                     if (counter >= i->next_deadline) {
                         i = it->program;
                         i->next_deadline = counter + i->deadline;
-                        i->processing_time_remaining = (int)i->processing_time;
                         proglist_add_node(ready_queue, i);
                         proglist_remove_node_index(wait_queue, index);
                         index--;
@@ -99,6 +97,7 @@ void scheduler_execute_programs()
             if (p == NULL)
             {
                 p = it->program;
+                b_program_swapped = 1;
                 it = it->next;
             }
             // Checks if there's one with an earlier deadline to be run first
@@ -108,67 +107,52 @@ void scheduler_execute_programs()
                 if (temp->next_deadline < p->next_deadline)
                 {
                     p = temp;
+                    b_program_swapped = 1;
                 }
                 it = it->next;
             }
 
-            // If it's not the same, there was a swap, so print the one that was swapped to
-            if (p != last_p)
+            // If the flag is on, there was a swap, so print the one that was swapped to
+            if (b_program_swapped)
             {
                 printf("Swapping to PID %lu on time %lu\n", p->id, counter);
-            }
-            else
-            {
-                printf("Resuming PID %lu on time %lu\n", p->id, counter);
+                b_program_swapped = 0;
             }
         }
 
         printf("PID %lu: running\n", p->id);
-        
-        // Runs the program until time remaining <= 0 or if there's an interruption
-        if (p != NULL)
-        {   
-            p->b_running = 1;
-            while (p->processing_time_remaining > 0)
-            {
-                run_one_instruction(p);
-                if (p->b_running == 0 || p->b_finished)
-                {
-                    b_end_line = 1;
-                }
-                p->processing_time_remaining--;
-                p->deadline_time_remaining--;
-                counter++;
-            }
-            
-            if (p->b_finished) // Program has finished and is then removed from all queues
-            {
-                proglist_remove_node(ready_queue, p->id);
-                p = NULL;
-                last_p = NULL;
-            }
-            else
-            {
-                last_p = p;
-            }
-        }
 
+        // Runs the program until every syscall
         if (p != NULL)
         {
-            printf("DEADLINE TIME REMAINING: %d\n", p->deadline_time_remaining);
+            p->b_running = 1;
+            while (p->b_running == 1)
+            {
+                run_program(p);
+            }
+            p->time_remaining -= (int)p->deadline;
+            counter += p->processing_time;
+
+            // Program has finished and is then removed from all queues
+            if (p->b_finished)
+            {
+                b_end_line = 1;
+                proglist_remove_node(ready_queue, p->id);
+                p = NULL;
+            }
         }
 
         // Deadline lost
-        if (p != NULL && p->deadline_time_remaining > 0)
+        if (p != NULL && p->next_deadline <= counter && p->time_remaining > 0)
         {
             b_end_line = 1;
             printf("PID %lu: deadline missed on time %lu.\n", p->id, counter);
             p->next_deadline = counter + p->deadline;
-            p->processing_time_remaining = (int)p->processing_time;
+            p->time_remaining = p->deadline;
         }
 
         // Deadline met
-        if (p != NULL && p->deadline_time_remaining <= 0)
+        if (p != NULL && p->time_remaining <= 0)
         {
             b_end_line = 1;
             printf("PID %lu: deadline met on time %lu.\n", p->id, counter);
