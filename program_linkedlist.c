@@ -6,7 +6,7 @@
 
 struct Program_list* proglist_create()
 {
-    struct Program_list* lst = malloc(sizeof(*lst)); // (WIP) não sei se é isso
+    struct Program_list* lst = malloc(sizeof(*lst));
     lst->head = NULL;
     lst->tail = NULL;
     lst->size = 0;
@@ -45,7 +45,7 @@ void proglist_add_node(struct Program_list* lst, struct Program *program)
     lst->size++;
 }
 
-int proglist_remove_node(struct Program_list* lst, size_t program_id) // (WIP)
+int proglist_remove_node(struct Program_list* lst, size_t program_id)
 {
     if (lst->size == 0)
     {
