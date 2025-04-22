@@ -479,7 +479,7 @@ int run_one_instruction( struct Program *program )
 {
     program->b_running = 1;
 
-    if (program->b_debug >= 2)
+    if (program->b_debug >= 2 && program->pc == 0 && program->b_finished == 0)
     {
         printf("PID %lu: Instruction count = %lu\n", program->id, program->instruction_count);
         printf("PID %lu: Variable count = %lu\n", program->id, program->variable_count);
@@ -492,11 +492,11 @@ int run_one_instruction( struct Program *program )
     {            
         if (program_instruction->type == IMMEDIATE)
         {
-            printf("PID %lu: counter %lu, instruction %lu: OPCODE %d-%d", program->id, program->instructions_executed, program_pc, program_instruction->operation, program_instruction->immediate);    
+            printf("PID %lu: instr_counter %lu, line %lu: OPCODE %d (%d)", program->id, program->instructions_executed, program_pc, program_instruction->operation, program_instruction->immediate);    
         }
         else
         {
-            printf("PID %lu: counter %lu, instruction %lu: OPCODE %d - %s", program->id, program->instructions_executed, program_pc, program_instruction->operation, program_instruction->var_pointer->name);
+            printf("PID %lu: instr_counter %lu, line %lu: OPCODE %d (%s)", program->id, program->instructions_executed, program_pc, program_instruction->operation, program_instruction->var_pointer->name);
         }
     }
 
@@ -563,20 +563,8 @@ int run_one_instruction( struct Program *program )
     program->instructions_executed++;
 
     // After the program ends, will print all variables
-    if (program->b_debug >= 2)
+    if (program->b_debug >= 1)
     {
-        printf("PID %lu: Variables: ", program->id);
-        for (size_t j = 0; j < program->variable_count; j++)
-        {
-            printf("%s = %d", program->variables[j].name, program->variables[j].value);
-
-            if (j != program->variable_count-1)
-            {
-                printf(", ");
-            }
-        }
-        printf("\n");
-
         if (!program->b_running)
         {
             printf("PID %lu: halted at instruction %lu/%lu\n",
@@ -585,6 +573,22 @@ int run_one_instruction( struct Program *program )
 
         if (program->b_finished == 1)
         {
+
+            if (program->b_debug >= 2)
+            {
+                printf("PID %lu: Variables: ", program->id);
+                for (size_t j = 0; j < program->variable_count; j++)
+                {
+                    printf("%s = %d", program->variables[j].name, program->variables[j].value);
+
+                    if (j != program->variable_count-1)
+                    {
+                        printf(", ");
+                    }
+                }
+                printf("\n");
+            }
+
             printf("PID %lu: finished\n", program->id);
         }
     }

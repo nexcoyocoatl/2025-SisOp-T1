@@ -36,9 +36,10 @@ void scheduler_execute_programs()
         // Checks for uninitialized programs that will arrive
         if (arrival_queue->size > 0)
         {
-            struct Program *p_it = proglist_get_program(arrival_queue, 0);
             size_t index = 0;
+            struct Program *p_it = proglist_get_program(arrival_queue, 0);
             struct Program *i;
+
             while (p_it != NULL)
             {
                 i = p_it;
@@ -53,42 +54,36 @@ void scheduler_execute_programs()
                     proglist_remove_node_index(arrival_queue, index);
                     index--;
                 }
-                else
-                {
-                    printf("Skipping arrival_queue PID %lu: time %lu, arrival %lu\n", i->id, counter, i->arrival_time);
-                }
+
                 index++;
                 p_it = proglist_get_program(arrival_queue, index);
             }
-            printf("--------------------------------------\n");
         }
         
-        // CPU on idle
+        // Checks for lists size, if they're both empty, CPU is on idle waiting for arrival_queue
         if (ready_queue->size <= 0)
         {
-            printf("Idle on time %lu.\n", counter);
-
             // Checks for wait_queue programs that should get back in the ready_queue
             if (wait_queue->size > 0)
             {
-                size_t index = 0;
                 it = wait_queue->head;
                 struct Program *i = it->program;
                 while (it != NULL)
                 {
-                    if (counter >= i->next_deadline) {
-                        i = it->program;
-                        i->next_deadline = counter + i->deadline;
-                        i->processing_time_remaining = (int)i->processing_time;
-                        proglist_add_node(ready_queue, i);
-                        proglist_remove_node_index(wait_queue, index);
-                        index--;
-                    }
-                    index++;
-                    it = proglist_get_node(wait_queue, index);
+                    i = it->program;
+                    i->next_deadline = counter + i->deadline;
+                    i->processing_time_remaining = (int)i->processing_time;
+                    proglist_add_node(ready_queue, i);
+                    proglist_remove_node_index(wait_queue, 0);
+                    it = proglist_get_node(wait_queue, 0);
                 }
             }
-            counter++;
+            else
+            {
+                // If the only non-empty list is the arrival queue, CPU is on idle, counter resumes
+                printf("Idle on time %lu. Waiting for arrival queue.\n", counter);
+                counter++;
+            }
             continue;
         }
 
@@ -115,6 +110,16 @@ void scheduler_execute_programs()
             // If it's not the same, there was a swap, so print the one that was swapped to
             if (p != last_p)
             {
+                if (last_p != NULL && last_p->deadline_time_remaining > 0)
+                {
+                    printf("PID %lu: deadline missed on time %lu.\n", last_p->id, counter);
+                }
+                if (b_end_line)
+                {
+                    printf("--------------------------------------\n");
+                    b_end_line = 0;
+                }
+
                 printf("Swapping to PID %lu on time %lu\n", p->id, counter);
             }
             else
@@ -122,14 +127,13 @@ void scheduler_execute_programs()
                 printf("Resuming PID %lu on time %lu\n", p->id, counter);
             }
         }
-
-        printf("PID %lu: running\n", p->id);
         
         // Runs the program until time remaining <= 0 or if there's an interruption
         if (p != NULL)
         {   
+            printf("PID %lu: running\n", p->id);
             p->b_running = 1;
-            while (p->processing_time_remaining > 0)
+            while (p->processing_time_remaining > 0 && p->b_finished == 0 && p->b_running == 1)
             {
                 run_one_instruction(p);
                 if (p->b_running == 0 || p->b_finished)
@@ -141,11 +145,11 @@ void scheduler_execute_programs()
                 counter++;
             }
             
-            if (p->b_finished) // Program has finished and is then removed from all queues
+            if (p->b_finished) // Program has finished and is then is removed from all queues
             {
                 proglist_remove_node(ready_queue, p->id);
-                p = NULL;
                 last_p = NULL;
+                p = NULL;
             }
             else
             {
@@ -157,7 +161,6 @@ void scheduler_execute_programs()
         if (p != NULL && p->deadline_time_remaining > 0)
         {
             b_end_line = 1;
-            printf("PID %lu: deadline missed on time %lu.\n", p->id, counter);
             p->next_deadline = counter + p->deadline;
             p->processing_time_remaining = (int)p->processing_time;
         }
@@ -168,15 +171,13 @@ void scheduler_execute_programs()
             b_end_line = 1;
             printf("PID %lu: deadline met on time %lu.\n", p->id, counter);
             proglist_remove_node(ready_queue, p->id);
-            proglist_add_node(wait_queue, p);
-
-            p = NULL;                
-        }
-
-        // Prints a line when program ends or is interrupted
-        if (b_end_line)
-        {
-            printf("--------------------------------------\n");
+            if (p->b_finished == 0)
+            {
+                proglist_add_node(wait_queue, p);
+            }
+            
+            last_p = p;
+            p = NULL;
         }
     }
     proglist_clear(ready_queue);
