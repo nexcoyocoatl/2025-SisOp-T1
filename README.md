@@ -1,7 +1,5 @@
 # Sistemas Operacionais T1 - Escalonador EDF
 
-Juliano Maia, Caio Adriano Schmidt Ferreira, Felipe Pitrez Alves de Messias
-
 ## Documentação do Programa:
 
 Este programa tem como objetivo a solução de escalonamento por EDF de um processador, com a abstração de programas em uma linguagem de programação similar a uma linguagem assembler.
