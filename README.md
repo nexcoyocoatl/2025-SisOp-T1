@@ -8,11 +8,11 @@ Os programas em formato .txt com o Assembly hipotético deverão estar contidos 
 
 Dentro da pasta “./programs” também há a opção de incluir um arquivo de texto “uservalues.txt” com os valores de arrival time, processing time e deadline de cada programa que será executado; cada linha se refere a estes 3 valores para cada programa que será lido em ordem alfabética do nome de seu arquivo. Como na figura abaixo:
 
-![image1](https://github.com/nexcoyocoatl/2025-SisOp-T1/blob/main/readme/image1.png)
+![image1](readme/image1.png)
 
 O arquivo de texto deve ser preenchido desta forma:
 
-<img align="left" alt="image2" src="https://github.com/nexcoyocoatl/2025-SisOp-T1/blob/main/readme/image2.png">
+<img align="left" alt="image2" src="readme/image2.png">
 
 programa 1, index 0 - arrival time: 0, processing time: 3, deadline: 9  
 programa 2, index 1 - arrival time: 0, processing time: 4, deadline: 25  
@@ -32,4 +32,4 @@ Se não houverem linhas o suficiente, será pedido ao usuário para que preencha
 
 Obs: Nossa solução apenas lê os programas em arquivo de texto com instruções separadas por linhas, incluindo labels. Não tendo suporte, portanto para casos específicos como este:
 
-![image3](https://github.com/nexcoyocoatl/2025-SisOp-T1/blob/main/readme/image3.png)
+![image3](readme/image3.png)
